@@ -1,0 +1,1214 @@
+---
+title: 'Population structure for the Pea Single Plant Plus Collection (PSPPC) (Nathan Johnson)'
+author: "Carolina BT, pop structure and genetic analysis"
+date: "February 2025"
+Script: 
+output:
+  html_document: default
+  pdf_document: default
+  chunk_output_type: console
+chunk_output_type: consoleƒ
+editor_options: 
+  chunk_output_type: console
+---
+
+# ##############################
+
+## FOLDERS
+
+/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/
+
+/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/admix
+
+/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/figures/Admix_PCA_MapPies
+
+### VCF and hapmap location
+
+456 accessions and 54315 SNPs
+
+Original folder: /project/dthavar/dilthavar/VariantFiles/Pisum_sativum
+
+ls /project/dthavar/dilthavar/VariantFiles/Pisum_sativum/PSPPC.vcf.gz 
+bcftools stats /project/dthavar/dilthavar/VariantFiles/Pisum_sativum/PSPPC.vcf.gz 
+
+/project/dthavar/dilthavar/VariantFiles/Pisum_sativum/PSPPC.vcf.gz ---> was filtered (see below) by Nathan to create PSPPC.filt.recode.vcf and PSPPC.filt.hmp.txt
+
+        VCFtools - 0.1.17
+        (C) Adam Auton and Anthony Marcketta 2009
+        
+        Parameters as interpreted:
+        	--gzvcf PSPPC.vcf.gz
+        	--maf 0.05
+        	--max-alleles 2
+        	--min-alleles 2
+        	--out PSPPC.filt
+        	--recode
+        
+        Using zlib version: 1.2.7
+        After filtering, kept 456 out of 456 Individuals
+        Outputting VCF file...
+        After filtering, kept 54315 out of a possible 319141 Sites
+        Run Time = 35.00 seconds
+
+I used /project/dthavar/dilthavar/njohns9/PSPProteinGWAS/VCFJunk/PSPPC.filt.recode.vcf
+
+### Convert the VCF into numerical. 
+
+module load vcftools/0.1.16
+
+module load bcftools/1.21
+
+bcftools view /project/dthavar/dilthavar/njohns9/PSPProteinGWAS/VCFJunk/PSPPC.filt.recode.vcf | more 
+
+bcftools stats /project/dthavar/dilthavar/njohns9/PSPProteinGWAS/VCFJunk/PSPPC.filt.recode.vcf 
+
+bcftools query --list-samples /project/dthavar/dilthavar/njohns9/PSPProteinGWAS/VCFJunk/PSPPC.filt.recode.vcf  | more
+
+bcftools query --list-samples /project/dthavar/dilthavar/njohns9/PSPProteinGWAS/VCFJunk/PSPPC.filt.recode.vcf  | wc -l
+
+bcftools query -f '%CHROM %POS\n' /project/dthavar/dilthavar/njohns9/PSPProteinGWAS/VCFJunk/PSPPC.filt.recode.vcf | head -3
+
+vcftools --vcf /project/dthavar/dilthavar/njohns9/PSPProteinGWAS/VCFJunk/PSPPC.filt.recode.vcf --012 --out /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode
+
+## filter by sample names, only select 267 samples
+
+bcftools view -S Taxa267.txt --force-samples /project/dthavar/dilthavar/njohns9/PSPProteinGWAS/VCFJunk/PSPPC.filt.recode.vcf > /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf
+bcftools view PSPPC.filt.recode267.vcf | head
+bcftools stats PSPPC.filt.recode267.vcf
+bcftools view -H /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf | more
+
+If a site has genotypes like "0|1" or "1|0", it indicates that the alleles are phased.
+
+# Convert to hapmap: 267 Samples and 54,315 SNPs
+PSPPC.filt.recode267.vcf
+
+I did it in Tassel5 GUI (desktop)
+--> generate this file --> PSPPC.filt.recode267.hmp.txt
+
+# convert to numerical
+
+vcftools --vcf PSPPC.filt.recode267.vcf --012 --out PSPPC.filt.recode267
+--> generate this file --> PSPPC.filt.recode267.012.
+                       --> PSPPC.filt.recode267.012.pos
+                       --> PSPPC.filt.recode267.012.indv
+                       --> PSPPC.filt.recode267.012.log
+                       
+# Calculate PLINK PED format              
+These options output the genotype data in PLINK PED format. With the first option, two files are generated, with suffixes ".ped" and ".map".
+
+bcftools view -H /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf | head
+bcftools query -f '%CHROM %POS\n' /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf | head
+bcftools query -f '%CHROM %POS\n' /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf | tail
+
+---> Replace chr name to be numeric
+bcftools annotate --rename-chrs rename.chrms.csv -o /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.RC.vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf
+
+bcftools query -f '%CHROM %POS\n' /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.RC.vcf | head
+bcftools query -f '%CHROM %POS\n' /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.RC.vcf | tail
+
+---> make plink files, use --plink-tped insted --plink (has this error: Error:  Could not open temporary file.)
+mkdir plink
+cd /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/plink
+
+module load plink/2.00_alpha_6.9
+--> (make plink.bed, plink.fam, plink.bim) for LD calculations
+
+TMPDIR="."
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.RC.vcf --plink --out /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/plink/PSPPC.filt.recode267.RC
+-->> create these files
+PSPPC.filt.recode267.RC.log
+PSPPC.filt.recode267.RC.map
+PSPPC.filt.recode267.RC.ped
+
+-->create other files
+module load plink/2.00_alpha_6.9
+plink --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.RC.vcf --make-bed --out /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/plink/PSPPC.filt.recode267.RC
+-->> create these files
+PSPPC.filt.recode267.RC.bed
+PSPPC.filt.recode267.RC.bim
+PSPPC.filt.recode267.RC.fam
+PSPPC.filt.recode267.RC.log
+
+        --> (make plink.ped, plink.map) for admixture analysis
+        plink --bfile PSPPC.filt.recode267.RC.plink --export ped --out PSPPC.filt.recode267.RC.plink 
+
+#Haplotyp block estimation
+plink --bfile /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/plink/PSPPC.filt.recode267.RC --blocks 
+
+### Lists of accessions with species information and origin
+
+There is 267 accession in this file:
+
+/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/PSPCUGenoSampleKey.csv
+
+/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/figures/Admix_PCA_MapPies/PSPCUGenoSampleKey.csv
+
+From Powers et al. 2021 and the github page (https://github.com/selizpowers/GWAS/blob/master/PopulationStructure/samplelist.xlsx), I downloaded the "samplelist.xlsx of 456 accessions (Geno_name, ID, Species) and created "samplelist_Powers2021.csv"
+
+### Set working directory for analysis
+
+cd /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/
+
+``` {r, echo=FALSE}
+
+#clear environment
+rm(list = ls())
+
+#------------------------------------Set working directory----------------------------------------#
+setwd("/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics")
+getwd()
+
+#---------------------------------------Install/load packages-------------------------------------#
+
+library(ggplot2)
+library(CMplot)
+library(RColorBrewer)
+library(data.table)
+library(dplyr)
+library(tidyverse)
+library(cowplot) #plot_grid
+library(plyr) #ddply
+library(rworldmap) #joinCountryData2Map
+library("RColorBrewer") #brewer.pal
+#display.brewer.all() 
+library(GGally) #ggmatrix_gtable
+library(plotly)
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+### Read genotype and accession lists
+
+``` {r, echo=FALSE}
+
+#------------------------------------read list of accessions----------------------------------------#
+
+acceListPow2021 <- read.csv("/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/samplelist_Powers2021.csv", header = T) #this is the list of 456 PSPPC accessions
+acceListPow2021[1:6,]
+
+acceList_0 <- read.csv("/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/PSPCUGenoSampleKey.csv", header = T) #this is the list of 267 phenotyped accessions
+acceList <- Reduce(function(...) merge(..., fix.by=c('ID', 'Sample'), all.x=TRUE), list(acceList_0, acceListPow2021)) #Put data together
+acceList[1:10,]
+str(acceList)
+acceList[1:6,]
+unique(acceList$Organism)
+unique(acceList$Species)
+as.data.frame(acceList %>% group_by(country) %>% dplyr::summarize(countTotal = n()))
+
+#---------------------------------Read Genotype for 456 accession---------------------------------------#
+#456 accessions and 54315 SNPs
+## fread (from data.table package) function reads matrix
+geno <- fread('/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode.012') 
+geno[1:2,1:10]
+## fread adds a column for rownumbers which is why I am removing the first column and then converting 0,1,2 format to -1,-0,1 genotype format
+geno <- as.matrix(geno[,-1])
+geno[1:2,1:10]
+str(geno)
+class(geno)
+
+#Add genotype names
+names <- fread('/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode.012.indv', header=F)
+rownames(geno) <- names$V1
+geno[1:2,1:10]
+str(geno) #456 accessiona and 54315 SNPs
+class(geno)
+
+#Add marker names
+markers <- fread('/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode.012.pos', header=F)
+markers$position <- paste(markers$V1, markers$V2, sep="_")
+colnames(geno) <- markers$position
+geno[1:2,1:10]
+str(geno)
+class(geno)
+
+#---------------------------------Get  Genotype for 267 samples---------------------------------------#
+#267 accessiona and 54315 SNPs
+
+geno267 <- geno[row.names(geno) %in% acceList$ID,]
+str(geno267)
+class(geno267)
+
+```
+
+# Kinship
+``` {r, echo=FALSE}
+
+print("#-------------------------------Calculate kinship matrix---------------------------------------#")
+
+#---------------------------------Read Genotype ---------------------------------------#
+#267 accessions
+geno <- fread('/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.012')
+geno[1:2,1:10]
+## fread adds a column for rownumbers which is why I am removing the first column and then converting 0,1,2 format to -1,-0,1 genotype format
+geno <- as.matrix(geno[,-1])
+geno[1:2,1:10]
+str(geno)
+class(geno)
+
+#Add genotype names
+names <- fread('/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.012.indv', header=F)
+rownames(geno) <- names$V1
+geno[1:2,1:10]
+str(geno) #267 accessiona and 54315 SNPs
+class(geno)
+
+#Add marker names
+markers <- fread('/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.012.pos', header=F)
+markers$position <- paste(markers$V1, markers$V2, sep="_")
+colnames(geno) <- markers$position
+geno[1:2,1:10]
+str(geno)
+class(geno)
+
+#kinship
+myKinship <- A.mat(geno) #rrBLUP - A.mat: Additive relationship matrix
+
+#save file
+write.csv(myKinship,"myKinship.csv", row.names=FALSE)
+
+```
+
+### Make a SNP density plot for 54315 SNPs
+
+``` {r, echo=FALSE}
+
+#---------------------------------chromosomes and position---------------------------------------#
+
+#chr_pos <- fread('/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode.012.pos', header=F)
+chr_pos <- fread('/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.012.pos', header=F)
+chr_pos <- as.data.frame(chr_pos)
+colnames(chr_pos)[1:2] <- c("Chr", "Position")
+chr_pos$Chromosome <- substr(chr_pos$Chr,4,4) #creates new column with extracted values
+chr_pos$SNP <- paste(chr_pos$Chr, chr_pos$Position, sep="_")
+chr_pos <- chr_pos %>% select("SNP", "Chromosome", "Position") #organize columns
+chr_pos$SNP <- as.factor(chr_pos$SNP)
+chr_pos$Chromosome <- as.factor(chr_pos$Chromosome)
+chr_pos$Position <- as.integer(chr_pos$Position)
+chr_pos[1:5,]
+str(chr_pos)
+
+#---------------------------------SNP density plot---------------------------------------#
+#SNP-density plot
+CMplot(chr_pos,plot.type="d",bin.size=1e6,chr.den.col=c("darkgreen", "yellow", "red"),file="jpg",file.name="PSPPC_54315SNPs",dpi=300,
+    main="PSPPC 54,315 SNPs",file.output=FALSE,verbose=TRUE,width=9,height=6)
+
+CMplot(chr_pos,plot.type="d",bin.size=1e6,chr.den.col=c("darkgreen", "yellow", "red"),file="jpg",file.name="PSPPC_54315SNPs",dpi=300,
+    main="PSPPC 54,315 SNPs",file.output=TRUE,verbose=TRUE,width=9,height=6)
+```
+
+### Make PCAs by species for 456 an 267 accessions and 54315 SNPs
+
+``` {r, echo=FALSE}
+
+#---------------------------------Make PCA 456 samples---------------------------------------#
+#PCA
+mrkPCA.pc <- prcomp(geno, retx=T, center=T, scale.=F) #calculates principle components
+var_explained <- mrkPCA.pc$sdev^2/sum(mrkPCA.pc$sdev^2) # eigs = mrkPCA.pc$sdev^2
+PCAs <- as.data.frame(mrkPCA.pc$x[rownames(geno), 1:10]) #save first 3 PCAs
+PCAs <- PCAs %>% rownames_to_column(var="ID")
+PCAs[1:10,]
+PCAs_info <- Reduce(function(...) merge(..., fix.by='ID', all.x=TRUE), list(PCAs, acceListPow2021)) #Put data together
+PCAs_info[1:10,]
+#unique(PCAs_info$Species)
+
+#PCA plot basic
+# ggplot() +
+#   geom_point(aes(x = PC1, y = PC2), data=PCAs_info, alpha = 1/10) +
+#   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"), y=paste0("PC2: ",round(var_explained[2]*100,1),"%")) +
+#   ggtitle("PC1 vs. PC2")
+
+#PCA plot: Powers et al. 2021 Figure 2A
+PC1vsPC2a <- ggplot() +
+  geom_point(aes(x = PC1, y = PC2), data=PCAs_info, alpha = 1/40) +
+  geom_point(aes(x = PC1, y = PC2, colour=Species), data=PCAs_info) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"), y=paste0("PC2: ",round(var_explained[2]*100,1),"%")) +
+  ggtitle("") +
+  scale_colour_manual(breaks=c('OSU','P. fulvum','P. sativum','P. sativum - Central Asia',
+                                 'P. sativum subsp. abyssinicum','P. sativum subsp. elatius',
+                                 'P. sativum subsp. sativum - Primary', 'USDA-ARS'),
+                      values = c("OSU"="#e41a1c","P. fulvum"="#377eb8","P. sativum"="#4daf4a","P. sativum - Central Asia"="#984ea3",
+                                 "P. sativum subsp. abyssinicum"="#FF7F00","P. sativum subsp. elatius"="#ffd92f",
+                                 "P. sativum subsp. sativum - Primary"="#a65628", "USDA-ARS"="#f781bf")) +
+  guides(color = guide_legend(reverse=FALSE, ncol = 1)) +
+  theme_bw(base_size = 10) +
+  theme(legend.title=element_blank())
+  #theme(legend.position="none") #hide legend
+PC1vsPC2a
+
+PC2vsPC3a <- ggplot() +
+  geom_point(aes(x = PC2, y = PC3), data=PCAs_info, alpha = 1/40) +
+  geom_point(aes(x = PC2, y = PC3, colour=Species), data=PCAs_info) +
+  labs(x=paste0("PC2: ",round(var_explained[2]*100,1),"%"), y=paste0("PC3: ",round(var_explained[3]*100,1),"%")) +
+  ggtitle("") +
+  scale_colour_manual(breaks=c('OSU','P. fulvum','P. sativum','P. sativum - Central Asia',
+                                 'P. sativum subsp. abyssinicum','P. sativum subsp. elatius',
+                                 'P. sativum subsp. sativum - Primary', 'USDA-ARS'),
+                      values = c("OSU"="#e41a1c","P. fulvum"="#377eb8","P. sativum"="#4daf4a","P. sativum - Central Asia"="#984ea3",
+                                 "P. sativum subsp. abyssinicum"="#FF7F00","P. sativum subsp. elatius"="#ffd92f",
+                                 "P. sativum subsp. sativum - Primary"="#a65628", "USDA-ARS"="#f781bf")) +
+  guides(color = guide_legend(reverse=FALSE, ncol = 1)) +
+  theme_bw(base_size = 10) +
+  theme(legend.title=element_blank())
+  #theme(legend.position="none") #hide legend
+PC2vsPC3a
+
+PC1vsPC3a <- ggplot() +
+  geom_point(aes(x = PC1, y = PC3), data=PCAs_info, alpha = 1/40) +
+  geom_point(aes(x = PC1, y = PC3, colour=Species), data=PCAs_info) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"), y=paste0("PC3: ",round(var_explained[3]*100,1),"%")) +
+  ggtitle("") +
+  scale_colour_manual(breaks=c('OSU','P. fulvum','P. sativum','P. sativum - Central Asia',
+                                 'P. sativum subsp. abyssinicum','P. sativum subsp. elatius',
+                                 'P. sativum subsp. sativum - Primary', 'USDA-ARS'),
+                      values = c("OSU"="#e41a1c","P. fulvum"="#377eb8","P. sativum"="#4daf4a","P. sativum - Central Asia"="#984ea3",
+                                 "P. sativum subsp. abyssinicum"="#FF7F00","P. sativum subsp. elatius"="#ffd92f",
+                                 "P. sativum subsp. sativum - Primary"="#a65628", "USDA-ARS"="#f781bf")) +
+  guides(color = guide_legend(reverse=FALSE, ncol = 1)) +
+  theme_bw(base_size = 10) +
+  theme(legend.title=element_blank())
+  #theme(legend.position="none") #hide legend
+PC1vsPC3a
+
+print('---------PUT PCA PLOTS TOGETHER---------')
+# PUT PCA PLOTA TOGETHER
+PCA_plotsa <- plot_grid(PC1vsPC2a, PC1vsPC3a,
+          labels = c('A', 'B'), 
+          nrow = 1, ncol = 2, scale = 0.99, label_size = 15)
+#PCA_plotsa
+
+# ggsave(plot = PCA_plotsa, file = paste("PC1vsPC2_456acce.pdf", sep = ""), height = 7, width = 8, path = "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/")
+# ggsave(plot = PCA_plotsa, file = paste("PC1vsPC2_456acce.png", sep = ""), height = 7, width = 8, path = "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/")
+# ggsave(plot = PCA_plotsa, file = paste("PC1vsPC2_456acce.tiff", sep = ""), height = 337, width = 337, units="mm", dpi=100, path = "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/")
+
+#---------------------------------Make PCA 267 samples (subsetting from PCA calculated with all the samples)---------------------------------------#
+
+PCAs_info_267 <- Reduce(function(...) merge(..., fix.by='ID', all.x=TRUE), list(acceList, PCAs)) #Put data together
+PCAs_info_267[1:10,]
+
+#PCA plot: similar to Powers et al. 2021 Figure S6, but labeling by accession used for phenotyping
+ggplot() +
+  geom_point(aes(x = PC1, y = PC2), data=PCAs_info_267, alpha = 1/40) +
+  geom_point(aes(x = PC1, y = PC2, colour=Species), data=PCAs_info_267) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"), y=paste0("PC2: ",round(var_explained[2]*100,1),"%")) +
+  ggtitle("") +
+  scale_colour_manual(breaks=c('P. sativum','P. sativum - Central Asia',
+                                 'P. sativum subsp. abyssinicum','P. sativum subsp. elatius',
+                                 'P. sativum subsp. sativum - Primary', 'USDA-ARS'),
+                      values = c("P. sativum"="#4daf4a","P. sativum - Central Asia"="#984ea3",
+                                 "P. sativum subsp. abyssinicum"="#FF7F00","P. sativum subsp. elatius"="#ffd92f",
+                                 "P. sativum subsp. sativum - Primary"="#a65628", "USDA-ARS"="#f781bf")) +
+  guides(color = guide_legend(reverse=FALSE, ncol = 1)) +
+  theme_bw(base_size = 10) +
+  theme(legend.title=element_blank())
+  #theme(legend.position="none") #hide legend 
+
+ggplot() +
+  geom_point(aes(x = PC2, y = PC3), data=PCAs_info_267, alpha = 1/40) +
+  geom_point(aes(x = PC2, y = PC3, colour=Species), data=PCAs_info_267) +
+  labs(x=paste0("PC2: ",round(var_explained[2]*100,1),"%"), y=paste0("PC3: ",round(var_explained[3]*100,1),"%")) +
+  ggtitle("") +
+  scale_colour_manual(breaks=c('P. sativum','P. sativum - Central Asia',
+                                 'P. sativum subsp. abyssinicum','P. sativum subsp. elatius',
+                                 'P. sativum subsp. sativum - Primary', 'USDA-ARS'),
+                      values = c("P. sativum"="#4daf4a","P. sativum - Central Asia"="#984ea3",
+                                 "P. sativum subsp. abyssinicum"="#FF7F00","P. sativum subsp. elatius"="#ffd92f",
+                                 "P. sativum subsp. sativum - Primary"="#a65628", "USDA-ARS"="#f781bf")) +
+  guides(color = guide_legend(reverse=FALSE, ncol = 1)) +
+  theme_bw(base_size = 10) +
+  theme(legend.title=element_blank())
+  #theme(legend.position="none") #hide legend 
+
+#PCA plot: similar to Powers et al. 2021 Figure 2B, but labeling by accession used for phenotyping
+ggplot() +
+  geom_point(aes(x = PC1, y = PC3), data=PCAs_info_267, alpha = 1/40) +
+  geom_point(aes(x = PC1, y = PC3, colour=Species), data=PCAs_info_267) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"), y=paste0("PC3: ",round(var_explained[3]*100,1),"%")) +
+  ggtitle("") +
+  scale_colour_manual(breaks=c('P. sativum','P. sativum - Central Asia',
+                                 'P. sativum subsp. abyssinicum','P. sativum subsp. elatius',
+                                 'P. sativum subsp. sativum - Primary', 'USDA-ARS'),
+                      values = c("P. sativum"="#4daf4a","P. sativum - Central Asia"="#984ea3",
+                                 "P. sativum subsp. abyssinicum"="#FF7F00","P. sativum subsp. elatius"="#ffd92f",
+                                 "P. sativum subsp. sativum - Primary"="#a65628", "USDA-ARS"="#f781bf")) +
+  guides(color = guide_legend(reverse=FALSE, ncol = 1)) +
+  theme_bw(base_size = 10) +
+  theme(legend.title=element_blank())
+  #theme(legend.position="none") #hide legend
+
+
+#---------------------------------Make PCA 267 samples (recalculate PCA)---------------------------------------#
+#PCA
+mrkPCA.pc_b <- prcomp(geno267, retx=T, center=T, scale.=F) #calculates principle components
+var_explained <- mrkPCA.pc_b$sdev^2/sum(mrkPCA.pc_b$sdev^2) # eigs = mrkPCA.pc_b$sdev^2
+sum(var_explained[1:3])#3 PCs --> 0.1843612
+sum(var_explained[1:5])#5 PCs --> 0.2245676
+sum(var_explained[1:10])#10 PCs --> 0.2960156
+sum(var_explained[1:11])#11 PCs --> 0.3073952
+
+PCAs_b <- as.data.frame(mrkPCA.pc_b$x[rownames(geno267), 1:10]) #save first 3 PCAs
+PCAs_b <- PCAs_b %>% rownames_to_column(var="ID")
+PCAs_b[1:10,]
+PCAs_info_267_b <- Reduce(function(...) merge(..., fix.by='ID', all.x=TRUE), list(acceList, PCAs_b)) #Put data together
+PCAs_info_267_b[1:10,]
+
+#PCA plot: similar to Powers et al. 2021 Figure 2A, but labeling by accession used for phenotyping
+PC1vsPC2b <- ggplot() +
+  geom_point(aes(x = PC1, y = PC2), data=PCAs_info_267_b, alpha = 1/40) +
+  geom_point(aes(x = PC1, y = PC2, colour=Species), data=PCAs_info_267_b) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"), y=paste0("PC2: ",round(var_explained[2]*100,1),"%")) +
+  ggtitle("") +
+  scale_color_brewer(palette="Set1") + # or Set1 for same color as Powers et al. 2021
+  theme_bw(base_size = 13) +
+  theme(legend.title=element_blank()) 
+  #theme(legend.position="none") #hide legend
+PC1vsPC2b
+
+ggplot() +
+  geom_point(aes(x = PC1, y = PC2), data=PCAs_info_267_b, alpha = 1/40) +
+  geom_point(aes(x = PC1, y = PC2, colour=continent), data=PCAs_info_267_b) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"), y=paste0("PC2: ",round(var_explained[2]*100,1),"%")) +
+  ggtitle("") +
+  scale_color_brewer(palette="Set1") + # or Set1 for same color as Powers et al. 2021
+  theme_bw(base_size = 13) +
+  theme(legend.title=element_blank()) 
+  #theme(legend.position="none") #hide legend
+
+PC2vsPC3b <- ggplot() +
+  geom_point(aes(x = PC2, y = PC3), data=PCAs_info_267_b, alpha = 1/40) +
+  geom_point(aes(x = PC2, y = PC3, colour=Species), data=PCAs_info_267_b) +
+  labs(x=paste0("PC2: ",round(var_explained[2]*100,1),"%"), y=paste0("PC3: ",round(var_explained[3]*100,1),"%")) +
+  ggtitle("") +
+  scale_color_brewer(palette="Set1") + # or Set1 for same color as Powers et al. 2021
+  theme_bw(base_size = 13) +
+  theme(legend.title=element_blank()) 
+  #theme(legend.position="none") #hide legend
+PC2vsPC3b
+
+PC1vsPC3b <- ggplot() +
+  geom_point(aes(x = PC1, y = PC3), data=PCAs_info_267_b, alpha = 1/40) +
+  geom_point(aes(x = PC1, y = PC3, colour=Species), data=PCAs_info_267_b) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"), y=paste0("PC3: ",round(var_explained[3]*100,1),"%")) +
+  ggtitle("") +
+  scale_color_brewer(palette="Set1") + # or Set1 for same color as Powers et al. 2021
+  theme_bw(base_size = 13) +
+  theme(legend.title=element_blank()) 
+  #theme(legend.position="none") #hide legend
+PC1vsPC3b
+
+print('---------PUT PCA PLOTS TOGETHER---------')
+# PUT PCA PLOTA TOGETHER
+PCA_plotsb <- plot_grid(PC1vsPC2a, PC1vsPC3a,
+          labels = c('A', 'B'), 
+          nrow = 1, ncol = 2, scale = 0.99, label_size = 15)
+PCA_plotsb
+
+# ggsave(plot = PCA_plotsb, file = paste("PC1vsPC2_267acce.pdf", sep = ""), height = 7, width = 8, path = "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/")
+# ggsave(plot = PCA_plotsb, file = paste("PC1vsPC2_267acce.png", sep = ""), height = 7, width = 8, path = "/project/dthavar/PCA_plotsb/acballe/PSPPC_PopStructure_Genetics/")
+# ggsave(plot = PCA_plotsb, file = paste("PC1vsPC2_267acce.tiff", sep = ""), height = 337, width = 337, units="mm", dpi=100, path = "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/")
+
+```
+
+### Admixture PLOT, population structure
+
+/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/admix
+
+CV error (K=1): 0.73637
+
+CV error (K=2): 0.65798
+
+CV error (K=3): 0.63639
+
+CV error (K=4): 0.62380
+
+CV error (K=5): 0.61816
+
+CV error (K=6): 0.61130
+
+CV error (K=7): 0.60698
+
+CV error (K=8): 0.60611
+
+CV error (K=9): 0.60398
+
+CV error (K=10): 0.60315 --> this is the lowest for 267x54315 SNPs
+
+CV error (K=11): 0.60489
+
+CV error (K=12): 0.60732
+
+/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/figures/Admix_PCA_MapPies
+
+### from this from this folder, the R script "sort_admixture.R" have some useful code to create admixture plot
+
+/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/admix
+
+``` {r, echo=FALSE}
+
+#plot K vs. delta K values
+K <- c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12') 
+CV_error <- c(0.73637, 0.65798, 0.63639, 0.62380, 0.61816, 0.61130, 0.60698, 0.60611, 0.60398, 0.60315, 0.60489, 0.60732)
+Subpopulation <- data.frame(K, CV_error)
+Subpopulation
+str(Subpopulation)
+
+#gglot
+order <- c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12') 
+K_CVerror <- ggplot(Subpopulation, aes(x=factor(K, level = order), y=CV_error, group=1)) +
+    geom_line() + 
+    theme_bw() +
+    labs(x = "K", y = "Cross-validation error")
+K_CVerror
+
+#Save plot
+ggsave(plot = K_CVerror, file = paste("K_CVerror.pdf", sep = ""), height = 4, width = 6, path = "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/")
+ggsave(plot = K_CVerror, file = paste("K_CVerror.png", sep = ""), height = 4, width = 6, path = "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/")
+
+```
+
+``` {r, echo=FALSE}
+
+#-------------------------Read admixture results----------------------------#
+
+#sorted_df <- read.csv("/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/admix/all_admix.csv", header = T) #this is the admixture results
+sorted_df <- read.csv("/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/figures/Admix_PCA_MapPies/all_admix.csv", header = T) #this is the admixture results
+sorted_df[1:6,]
+colnames(sorted_df)[1] <- "ID"
+class(sorted_df)
+sorted_df$order <- rownames(sorted_df)
+sorted_df[1:6,]
+sorted_df %>% dplyr::group_by(group) %>% dplyr::summarize(countTotal = n())
+sorted_df_melt <- melt(sorted_df, id.vars = c("ID", "order"), measure.vars = c("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10"))
+colnames(sorted_df_melt)[3] <- "Group"
+colnames(sorted_df_melt)[4] <- "Percentage"
+sorted_df_melt$Group <- gsub("V","", as.factor(sorted_df_melt$Group))
+sorted_df_melt$Group <- as.factor(sorted_df_melt$Group)
+sorted_df_melt$order <- as.integer(sorted_df_melt$order)
+str(sorted_df_melt)
+head(sorted_df_melt)
+
+
+#----------------------------GGPLOT Admixture Plot----------------------------#
+ADMIX <- ggplot(sorted_df_melt, aes(fill=Group, y=Percentage, x=reorder(ID, order))) + 
+  geom_bar(position= "fill", stat="identity", width = 1, show.legend = TRUE) + 
+  theme_bw() +
+  labs(x = "Individuals", y = "Ancestry") +
+  #scale_fill_okabe_ito(order = 1:6) +
+  scale_fill_manual(name="Subpopulation", breaks=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+                    values = c("1"="#984ea3","2"="#A6CEE3","3"="#377eb8","4"="#f781bf","5"="#ffd92f",
+                                "6"="#e41a1c","7"="#FF7F00","8"="#6A3D9A","9"="#a65628","10"="#33A02C")) +
+  #theme(legend.position="none") + #hide legend
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text=element_text(size=12), axis.title=element_text(size=18)) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme(legend.position="none") #hide legend
+ADMIX
+
+# ggplot(sorted_df_melt, aes(fill=Group, y=Percentage, x=reorder(ID, order))) + 
+#   geom_bar(position= "fill", stat="identity", width = 1, show.legend = TRUE) + 
+#   theme_bw() +
+#   labs(x = "Individuals", y = "Ancestry") +
+#   #scale_fill_okabe_ito(order = 1:6) +
+#   scale_fill_manual(name="Subpopulation", breaks=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+#                       values = c("1"="#A6CEE3","2"="#CAB2D6","3"="#6A3D9A","4"="#FB9A99","5"="#33A02C",
+#                                  "6"="#E31A1C","7"="#FF7F00","8"="#1F78B4","9"="#B15928","10"="#B2DF8A")) +
+#   #theme(legend.position="none") + #hide legend
+#   theme(axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank()) +
+#   scale_y_continuous(expand = c(0,0)) 
+
+```
+
+### Make PCAs by species for 267 accessions and 54315 SNPs by subpopulation
+
+``` {r, echo=FALSE}
+
+#Check list of 267 accessions
+acceList[1:6,]
+
+# check PCAs
+PCAs_b[1:10,]
+
+#Check list 267 with subpopulation information
+sorted_df[1:6,]
+
+#merge datasets
+List267_dmix_PCA <- Reduce(function(...) merge(..., fix.by='ID', all.x=TRUE), list(acceList, PCAs_b, sorted_df)) #Put data together
+List267_dmix_PCA[1:10,]
+str(List267_dmix_PCA)
+List267_dmix_PCA$group <- as.character(List267_dmix_PCA$group)
+
+PC1vsPC2c <- ggplot() +
+  geom_point(aes(x = PC1, y = PC2), data=List267_dmix_PCA)+
+  geom_point(aes(x = PC1, y = PC2, colour=group, shape = group, size = group), data=List267_dmix_PCA) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"), y=paste0("PC2: ",round(var_explained[2]*100,1),"%")) +
+  ggtitle("") +
+  scale_colour_manual(name="Subpopulation", breaks=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+                      values = c("1"="#984ea3","2"="#A6CEE3","3"="#377eb8","4"="#f781bf","5"="#ffd92f",
+                                 "6"="#e41a1c","7"="#FF7F00","8"="#6A3D9A","9"="#a65628","10"="#33A02C")) +
+  scale_shape_manual(name="Subpopulation", breaks=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+                    values = c("1"=17,"2"=17,"3"=15,"4"=19,"5"=15,"6"=15,"7"=17,"8"=18,"9"=19,"10"=18)) +
+  scale_size_manual(name="Subpopulation", breaks=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+                    values=c(3,3,3,3,3,3,3,3.5,3,3.5)) +
+  theme_bw(base_size = 13) +
+  theme(legend.title=element_blank(), legend.text = element_text(size = 17), legend.key.size = unit(0.6, "cm"), axis.title=element_text(size=18)) +
+  theme(legend.position="none") #hide legend
+PC1vsPC2c
+
+PC2vsPC3c <- ggplot() +
+  geom_point(aes(x = PC2, y = PC3), data=List267_dmix_PCA, alpha = 1/40) +
+  geom_point(aes(x = PC2, y = PC3, colour=group, shape = group, size = group), data=List267_dmix_PCA) +
+  labs(x=paste0("PC2: ",round(var_explained[2]*100,1),"%"), y=paste0("PC3: ",round(var_explained[3]*100,1),"%")) +
+  ggtitle("") +
+  scale_colour_manual(name="Subpopulation", breaks=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+                      values = c("1"="#984ea3","2"="#A6CEE3","3"="#377eb8","4"="#f781bf","5"="#ffd92f",
+                                 "6"="#e41a1c","7"="#FF7F00","8"="#6A3D9A","9"="#a65628","10"="#33A02C")) +
+  scale_shape_manual(name="Subpopulation", breaks=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+                    values = c("1"=17,"2"=17,"3"=15,"4"=19,"5"=15,"6"=15,"7"=17,"8"=18,"9"=19,"10"=18)) +
+  scale_size_manual(name="Subpopulation", breaks=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+                    values=c(3,3,3,3,3,3,3,3.5,3,3.5)) +
+  theme_bw(base_size = 13) +
+  theme(legend.title=element_blank(), legend.text = element_text(size = 17), legend.key.size = unit(0.6, "cm"), axis.title=element_text(size=18)) +
+  theme(legend.position="none") #hide legend
+PC2vsPC3c
+
+PC1vsPC3c <- ggplot() +
+  geom_point(aes(x = PC1, y = PC3), data=List267_dmix_PCA, alpha = 1/40) +
+  geom_point(aes(x = PC1, y = PC3, colour=group, shape = group, size = group), data=List267_dmix_PCA) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"), y=paste0("PC3: ",round(var_explained[3]*100,1),"%")) +
+  ggtitle("") +
+  scale_colour_manual(name="Subpopulation", breaks=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+                      values = c("1"="#984ea3","2"="#A6CEE3","3"="#377eb8","4"="#f781bf","5"="#ffd92f",
+                                 "6"="#e41a1c","7"="#FF7F00","8"="#6A3D9A","9"="#a65628","10"="#33A02C")) +
+  scale_shape_manual(name="Subpopulation", breaks=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+                    values = c("1"=17,"2"=17,"3"=15,"4"=19,"5"=15,"6"=15,"7"=17,"8"=18,"9"=19,"10"=18)) +
+  scale_size_manual(name="Subpopulation", breaks=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+                    values=c(3,3,3,3,3,3,3,3.5,3,3.5)) +
+  theme_bw(base_size = 13) +
+  guides(color = guide_legend(override.aes = list(size = 8))) +
+  theme(legend.title=element_blank(), legend.text = element_text(size = 17), legend.key.size = unit(0.6, "cm"), axis.title=element_text(size=18)) 
+  #theme(legend.position="none") #hide legend
+PC1vsPC3c
+
+print('---------3D plot---------')
+#3D PCA specifying parent for test cross
+groups_shape <-c("1"="17","2"="17","3"="15","4"="19","5"="15","6"="15","7"="17","8"="18","9"="19","10"="18")
+groups_color <- c("1"="#984ea3","2"="#A6CEE3","3"="#377eb8","4"="#f781bf","5"="#ffd92f","6"="#e41a1c","7"="#FF7F00","8"="#6A3D9A","9"="#a65628","10"="#33A02C")
+PCA_3D <- List267_dmix_PCA %>% plot_ly(type = "scatter3d", mode = "markers", x = ~PC1, y = ~PC2, z = ~PC3,
+                             symbol = ~group, symbols = groups_shape, 
+                             color = ~group, colors = groups_color, marker = list(size = 5)) %>%
+                     layout(title = paste('Total Explained Variance =', round((var_explained[1]*100)+(var_explained[2]*100)+(var_explained[3]*100),1), '%', sep = " "))
+PCA_3D
+
+#save 3d plot
+htmlwidgets::saveWidget(PCA_3D, "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PCA_3D_10pops.html")
+
+```
+
+### World map with Pie charts using country of origin 
+
+/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/figures/Admix_PCA_MapPies/
+
+https://github.com/njohns4/LentilProteinQualityGWAS/blob/main/Figures/MapPies_PCA_ADMIX_Plots.R
+
+``` {r, echo=FALSE}
+
+Admix_MapPies <- read.csv("/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/figures/Admix_PCA_MapPies/k10df.csv", header = T) #this is the admixture results
+Admix_MapPies[1:6,]
+str(Admix_MapPies)
+colnames(Admix_MapPies)[1] <- "Taxa"
+
+sorted_df <- read.csv("/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/figures/Admix_PCA_MapPies/all_admix.csv", header = T) #this is the admixture results
+sorted_df[1:6,]
+colnames(sorted_df)[1] <- "Taxa"
+sorted_df <- sorted_df %>% select(c("Taxa", "group"))
+str(sorted_df)
+sorted_df_Taxa <- sorted_df %>% select(c("Taxa"))
+#write.table(sorted_df, "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/Taxa267_group.txt", row.names = F, col.names = F, sep = "\t", quote = FALSE)
+#write.table(sorted_df_Taxa, "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/Taxa267.txt", row.names = F, col.names = F, quote = FALSE)
+
+#merge datasets
+k10adxacc <- Reduce(function(...) merge(..., fix.by='Taxa', all.x=TRUE), list(sorted_df, Admix_MapPies)) #Put data together
+k10adxacc[1:10,]
+str(k10adxacc)
+k10adxacc$group <- as.character(k10adxacc$group)
+k10adxacc %>% dplyr::group_by(group) %>% dplyr::summarize(countTotal = n())
+as.data.frame(k10adxacc %>% dplyr::group_by(country) %>% dplyr::summarize(MEAN_1=mean(V1, na.rm=T),MEAN_2=mean(V2, na.rm=T),MEAN_3=mean(V3, na.rm=T),MEAN_4=mean(V4, na.rm=T),MEAN_5=mean(V5, na.rm=T),
+                                                                          MEAN_6=mean(V6, na.rm=T),MEAN_7=mean(V7, na.rm=T),MEAN_8=mean(V8, na.rm=T),MEAN_9=mean(V9, na.rm=T),MEAN_10=mean(V10, na.rm=T),))
+
+as.data.frame(k10adxacc %>% group_by(country) %>% dplyr::summarize(countTotal = n()))
+as.data.frame(k10adxacc %>% group_by(ISO3) %>% dplyr::summarize(countTotal = n()))
+as.data.frame(k10adxacc %>% group_by(ISO3) %>% dplyr::summarize(meanV1 = mean(V1))) 
+as.data.frame(k10adxacc %>% group_by(ISO3) %>% dplyr::summarize(meanV2 = mean(V2))) 
+as.data.frame(k10adxacc %>% group_by(ISO3) %>% dplyr::summarize(meanV3 = mean(V3))) 
+as.data.frame(k10adxacc %>% group_by(ISO3) %>% dplyr::summarize(meanV4 = mean(V4))) 
+as.data.frame(k10adxacc %>% group_by(ISO3) %>% dplyr::summarize(meanV5 = mean(V5))) 
+as.data.frame(k10adxacc %>% group_by(ISO3) %>% dplyr::summarize(meanV6 = mean(V6))) 
+as.data.frame(k10adxacc %>% group_by(ISO3) %>% dplyr::summarize(meanV7 = mean(V7))) 
+as.data.frame(k10adxacc %>% group_by(ISO3) %>% dplyr::summarize(meanV8 = mean(V8))) 
+as.data.frame(k10adxacc %>% group_by(ISO3) %>% dplyr::summarize(meanV9 = mean(V9))) 
+as.data.frame(k10adxacc %>% group_by(ISO3) %>% dplyr::summarize(meanV10 = mean(V10))) 
+
+# Includes columns: 
+# Taxa, V1, V2, V3, V4, V5, V6, group, ISO3, PCA1, PCA2, PCA3
+
+##### Map Pies Figures #####
+#Calculate mean group percentages for each country and add to same data frame.
+k10adxISOV1 <- ddply(k10adxacc, 
+                     .(ISO3), 
+                     summarize, 
+                     V1=mean(V1))
+k10adxISOV2 <- ddply(k10adxacc, 
+                     .(ISO3), 
+                     summarize, 
+                     V2=mean(V2))
+k10adxISOV3 <- ddply(k10adxacc, 
+                     .(ISO3), 
+                     summarize, 
+                     V3=mean(V3))
+k10adxISOV4 <- ddply(k10adxacc, 
+                     .(ISO3), 
+                     summarize, 
+                     V4=mean(V4))
+k10adxISOV5 <- ddply(k10adxacc, 
+                     .(ISO3), 
+                     summarize, 
+                     V5=mean(V5))
+k10adxISOV6 <- ddply(k10adxacc, 
+                     .(ISO3), 
+                     summarize, 
+                     V6=mean(V6))
+k10adxISOV7 <- ddply(k10adxacc, 
+                     .(ISO3), 
+                     summarize, 
+                     V7=mean(V7))
+k10adxISOV8 <- ddply(k10adxacc, 
+                     .(ISO3), 
+                     summarize, 
+                     V8=mean(V8))
+k10adxISOV9 <- ddply(k10adxacc, 
+                     .(ISO3), 
+                     summarize, 
+                     V9=mean(V9))
+k10adxISOV10 <- ddply(k10adxacc, 
+                      .(ISO3), 
+                      summarize, 
+                      V10=mean(V10))
+k10adxISO <- k10adxISOV1
+k10adxISO$V2 <- k10adxISOV2[,2]
+k10adxISO$V3 <- k10adxISOV3[,2]
+k10adxISO$V4 <- k10adxISOV4[,2]
+k10adxISO$V5 <- k10adxISOV5[,2]
+k10adxISO$V6 <- k10adxISOV6[,2]
+k10adxISO$V7 <- k10adxISOV7[,2]
+k10adxISO$V8 <- k10adxISOV8[,2]
+k10adxISO$V9 <- k10adxISOV9[,2]
+k10adxISO$V10 <- k10adxISOV10[,2]
+head(k10adxISO)
+rowSums(k10adxISO[1:60,2:11]) #HAS TO BE 1 or close to one
+k10adxISO[1:5,]
+
+#Count group members and multiply group means by count.
+k10ISOCounts <- count(k10adxacc$ISO3) 
+k10ISOCounts
+
+head(k10adxISO)
+colnames(k10ISOCounts) <- c("ISO3","Count")
+head(k10ISOCounts)
+
+k10adxISOxCounts <- merge(k10adxISO,k10ISOCounts, by="ISO3")
+k10adxISOxCounts
+
+k10adxISOxCounts -> k10isoavmerge
+k10isoavmerge[1:5,]
+k10isoavmerge$Group1 <- k10isoavmerge$V1 * k10isoavmerge$Count
+k10isoavmerge$Group2 <- k10isoavmerge$V2 * k10isoavmerge$Count
+k10isoavmerge$Group3 <- k10isoavmerge$V3 * k10isoavmerge$Count
+k10isoavmerge$Group4 <- k10isoavmerge$V4 * k10isoavmerge$Count
+k10isoavmerge$Group5 <- k10isoavmerge$V5 * k10isoavmerge$Count
+k10isoavmerge$Group6 <- k10isoavmerge$V6 * k10isoavmerge$Count
+k10isoavmerge$Group7 <- k10isoavmerge$V7 * k10isoavmerge$Count
+k10isoavmerge$Group8 <- k10isoavmerge$V8 * k10isoavmerge$Count
+k10isoavmerge$Group9 <- k10isoavmerge$V9 * k10isoavmerge$Count
+k10isoavmerge$Group10 <- k10isoavmerge$V10 * k10isoavmerge$Count
+k10isoavmerge[1:5,]
+k10isoavmerge$SumGroup <- rowSums(k10isoavmerge[,13:22])
+head(k10isoavmerge)
+
+#check pies for few countries
+k10isoavmerge %>% filter(ISO3 == "IND")
+k10isoavmerge %>% filter(ISO3 == "USA")
+
+#Join data to map
+head(k10isoavmerge)
+k10admix <- joinCountryData2Map(k10isoavmerge, joinCode = "ISO3", nameJoinColumn = "ISO3")
+
+par(mai=c(0,0,0.2,0),xaxs="i",yaxs="i")
+
+write.csv(k10isoavmerge, "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/ISO3_ADMIX_x_Count.csv", row.names = F)
+
+# Open a pdf file
+pdf("MAP.pdf", width = 16, height = 12) 
+# 2. Create a plot
+#Exported as PDF with dimensions 15 x 12 in.
+mapPies(k10admix, nameZs = c("Group1", "Group2", "Group3", "Group4", "Group5", "Group6", "Group7", "Group8", "Group9", "Group10"), 
+        ratio=1, zColours = colorRampPalette(c("#984ea3","#A6CEE3","#377eb8","#f781bf","#ffd92f","#e41a1c","#FF7F00","#6A3D9A","#a65628","#33A02C"))(10),
+        addCatLegend = FALSE, symbolSize = 0.6, maxZVal = 0.5, xlim = NA,
+        ylim = NA, mapRegion = "world", borderCol = "black", oceanCol = "azure1",
+        landCol = "snow1", add = FALSE, main = "", lwd = 0.5)
+# Close the pdf file
+dev.off() 
+
+# mapPies(k10admix, nameZs = c("Group1", "Group2", "Group3", "Group4", "Group5", "Group6", "Group7", "Group8", "Group9", "Group10"),
+#         ratio=1, zColours = brewer.pal(10, "Paired"),
+#         addCatLegend = FALSE, symbolSize = 0.6, maxZVal = 0.5, xlim = NA,
+#         ylim = NA, mapRegion = "world", borderCol = "black", oceanCol = "light blue",
+#         landCol = "light grey", add = FALSE, main = "", lwd = 0.5)
+
+```
+
+### Put figures together (MAP+ADMIX_PCAs)
+
+``` {r, echo=FALSE}
+
+ADMIX
+PC1vsPC2c
+PC2vsPC3c
+PC1vsPC3c
+
+Map_Admix_PCA <- plot_grid(
+  plot_grid(NULL, 
+            (mapPies(k10admix, nameZs = c("Group1", "Group2", "Group3", "Group4", "Group5", "Group6", "Group7", "Group8", "Group9", "Group10"), 
+                     ratio=1, zColours = colorRampPalette(c("#984ea3","#A6CEE3","#377eb8","#f781bf","#ffd92f","#e41a1c","#FF7F00","#6A3D9A","#a65628","#33A02C"))(10),
+                     addCatLegend = FALSE, symbolSize = 0.6, maxZVal = 0.5, xlim = NA,
+                     ylim = NA, mapRegion = "world", borderCol = "black", oceanCol = "azure1",
+                     landCol = "snow1", add = FALSE, main = "", lwd = 0.5)), 
+            NULL, nrow = 1, ncol = 3, rel_widths = c(0, 1, 0), labels = c("A"), scale = 0.95, label_size = 22),
+  plot_grid(NULL, ADMIX, NULL, nrow = 1, ncol = 3, rel_widths = c(0, 1, 0), labels = c("B"), scale = 0.95, label_size = 22),
+  plot_grid(PC1vsPC2c, PC2vsPC3c, PC1vsPC3c, nrow = 1, rel_widths = c(0.274, 0.27, 0.33), labels = c("C", "D", "E"), scale = 0.95, label_size = 22),
+  nrow = 3, rel_heights = c(1.8, 1, 1.3))
+Map_Admix_PCA
+
+#Save plot
+ggsave(plot = Map_Admix_PCA, file = paste("PLOT_Map_Admix_PCA.pdf", sep = ""), height = 17, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/") #note that ggsave will save the last plot you generated
+ggsave(plot = Map_Admix_PCA, file = paste("PLOT_Map_Admix_PCA.png", sep = ""), height = 17, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/") #note that ggsave will save the last plot you generated
+ggsave(plot = Map_Admix_PCA, file = paste("PLOT_Map_Admix_PCA.tiff", sep = ""), height = 408, width = 384, units="mm", dpi=100, path = "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/")
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+#Get list of samples per subpopulation
+
+```{r, echo=TRUE}
+
+#Get list of samples per subpopulation
+
+sorted_df <- read.csv("/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/figures/Admix_PCA_MapPies/all_admix.csv", header = T) #this is the admixture results
+colnames(sorted_df)[1] <- "Taxa"
+sorted_df <- sorted_df %>% select(c("Taxa", "group"))
+sorted_df[1:6,]
+
+#just save the list of accesion by subpopulations
+subpopulation1 <- sorted_df %>% filter(group == 1) %>% select(c("Taxa"))
+write.table(subpopulation1, file = "subpopulation1.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+subpopulation2 <- sorted_df %>% filter(group == 2) %>% select(c("Taxa"))
+write.table(subpopulation2, file = "subpopulation2.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+subpopulation3 <- sorted_df %>% filter(group == 3) %>% select(c("Taxa"))
+write.table(subpopulation3, file = "subpopulation3.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+subpopulation4 <- sorted_df %>% filter(group == 4) %>% select(c("Taxa"))
+write.table(subpopulation4, file = "subpopulation4.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+subpopulation5 <- sorted_df %>% filter(group == 5) %>% select(c("Taxa"))
+write.table(subpopulation5, file = "subpopulation5.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+subpopulation6 <- sorted_df %>% filter(group == 6) %>% select(c("Taxa"))
+write.table(subpopulation6, file = "subpopulation6.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+subpopulation7 <- sorted_df %>% filter(group == 7) %>% select(c("Taxa"))
+write.table(subpopulation7, file = "subpopulation7.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+subpopulation8 <- sorted_df %>% filter(group == 8) %>% select(c("Taxa"))
+write.table(subpopulation8, file = "subpopulation8.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+subpopulation9 <- sorted_df %>% filter(group == 9) %>% select(c("Taxa"))
+write.table(subpopulation9, file = "subpopulation9.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+subpopulation10 <- sorted_df %>% filter(group == 10) %>% select(c("Taxa"))
+write.table(subpopulation1, file = "subpopulation10.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+```
+
+### Population diversity estimates for 10 populations
+
+- Nucleotide diversity
+- Tajima's D
+- Fst (differentiation index)
+
+https://www-users.york.ac.uk/~dj757/popgenomics/workshop5.html#generating_plots_in_r
+https://www-users.york.ac.uk/~dj757/popgenomics/workshop5.html
+https://vcftools.sourceforge.net/man_latest.html
+
+# ##################################################
+cd /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/
+
+Overall calculations
+
+# Count samples (267), check file
+bcftools stats /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf
+bcftools view -H /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf | more
+bcftools query --list-samples /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf | wc -l
+
+# Overal Nucleotide diversity, - windowed.pi"
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --window-pi 100000 --out PSPPC.267taxa_100kb.1
+
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --window-pi 100000 --keep subpopulation1.txt --out subpopulation1.1
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --window-pi 100000 --keep subpopulation2.txt --out subpopulation2.1
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --window-pi 100000 --keep subpopulation3.txt --out subpopulation3.1
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --window-pi 100000 --keep subpopulation4.txt --out subpopulation4.1
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --window-pi 100000 --keep subpopulation5.txt --out subpopulation5.1
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --window-pi 100000 --keep subpopulation6.txt --out subpopulation6.1
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --window-pi 100000 --keep subpopulation7.txt --out subpopulation7.1
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --window-pi 100000 --keep subpopulation8.txt --out subpopulation8.1
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --window-pi 100000 --keep subpopulation9.txt --out subpopulation9.1
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --window-pi 100000 --keep subpopulation10.txt --out subpopulation10.1
+
+#Overal Tajima's D
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --TajimaD 100000 --out PSPPC.267taxa_100kb.2
+
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --TajimaD 100000 --keep subpopulation1.txt --out subpopulation1.2
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --TajimaD 100000 --keep subpopulation2.txt --out subpopulation2.2
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --TajimaD 100000 --keep subpopulation3.txt --out subpopulation3.2
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --TajimaD 100000 --keep subpopulation4.txt --out subpopulation4.2
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --TajimaD 100000 --keep subpopulation5.txt --out subpopulation5.2
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --TajimaD 100000 --keep subpopulation6.txt --out subpopulation6.2
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --TajimaD 100000 --keep subpopulation7.txt --out subpopulation7.2
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --TajimaD 100000 --keep subpopulation8.txt --out subpopulation8.2
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --TajimaD 100000 --keep subpopulation9.txt --out subpopulation9.2
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --TajimaD 100000 --keep subpopulation10.txt --out subpopulation10.2
+
+#Overal heterozygosity on a per-individual basis
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --het --out PSPPC.267taxa_100kb.3
+
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --het --keep subpopulation1.txt --out subpopulation1.3
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --het --keep subpopulation2.txt --out subpopulation2.3
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --het --keep subpopulation3.txt --out subpopulation3.3
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --het --keep subpopulation4.txt --out subpopulation4.3
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --het --keep subpopulation5.txt --out subpopulation5.3
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --het --keep subpopulation6.txt --out subpopulation6.3
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --het --keep subpopulation7.txt --out subpopulation7.3
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --het --keep subpopulation8.txt --out subpopulation8.3
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --het --keep subpopulation9.txt --out subpopulation9.3
+vcftools --vcf /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode267.vcf --het --keep subpopulation10.txt --out subpopulation10.3
+
+# ##################################################
+
+cd /project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics
+sbatch Genetic_Diversity_stimates.sbatch
+squeue --me
+
+______________________ Run GWAS in palmetto 
+Genetic_Diversity_stimates.sbatch
+squeue --me
+                      ______________________ GD.sbatch______
+                                                                  
+                      #!/bin/bash
+                      
+                      #SBATCH --job-name GD
+                      #SBATCH --nodes 1
+                      #SBATCH --ntasks 1
+                      #SBATCH --tasks-per-node 1
+                      #SBATCH --cpus-per-task 1
+                      #SBATCH --mem 8gb
+                      #SBATCH --time 3:00:00
+                      #SBATCH --mail-type BEGIN
+                      #SBATCH --mail-type END
+                      #SBATCH --mail-type FAIL
+                      #SBATCH --output=GD.out
+                      #SBATCH --error=GD.err
+                      ______________________
+                      
+## decide not to run Fst becau I have to run 10x10 anlysis, compare each subpopulation with each other
+## Fst by window
+vcftools --vcf ${OUTPUT_PATH}/${VCF}.267taxa.vcf  --weir-fst-pop converted_cuso.txt --weir-fst-pop historic_selected_cuso.txt  --fst-window-size 1000000 --fst-window-step 100000 --out Fst_converted_cuso_historic_selected_cuso_1Mb
+vcftools --vcf ${OUTPUT_PATH}/${VCF}.267taxa.vcf --hardy --out SAP_HWE_imputed_MAFfiltered
+vcftools --gzvcf ${INPUT_PATH}/${VCF}.vcf.gz --hardy --out SAP_HWE_imputed_MAFfiltered
+https://ondemand.rcd.clemson.edu/pun/sys/dashboard/files/fs//project/skresov/tillers/panicle/HDP_data/scripts/vcftools_fst.qsub
+
+
+``` {r, echo=FALSE}
+
+#------------------------------------Set working directory----------------------------------------#
+setwd("/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics")
+getwd()
+
+#-------------------------------------------------------------------------------------------------#
+#PI
+pi.all <- read.table("PSPPC.267taxa_100kb.1.windowed.pi", header=T)
+#pi.all <- pi.all %>% filter(PI != "NaN")
+head(pi.all)
+hist(pi.all$PI,br=20)
+boxplot(pi.all$PI,ylab="PI")
+summary(pi.all)
+pi.all %>% summarize(mean.pi = mean(PI, na.rm = TRUE))
+pi.all %>% group_by(CHROM) %>% dplyr::summarize(countTotal = n(), mean.pi = mean(PI))
+
+pi <- read.table("subpopulation1.1.windowed.pi", header=T)
+#pi <- pi %>% filter(PI != "NaN")
+mean(pi$PI, na.rm = TRUE)
+
+pi <- read.table("subpopulation2.1.windowed.pi", header=T)
+#pi <- pi %>% filter(PI != "NaN")
+mean(pi$PI, na.rm = TRUE)
+
+pi <- read.table("subpopulation3.1.windowed.pi", header=T)
+#pi <- pi %>% filter(PI != "NaN")
+mean(pi$PI, na.rm = TRUE)
+
+pi <- read.table("subpopulation4.1.windowed.pi", header=T)
+#pi <- pi %>% filter(PI != "NaN")
+mean(pi$PI, na.rm = TRUE)
+
+pi <- read.table("subpopulation5.1.windowed.pi", header=T)
+#pi <- pi %>% filter(PI != "NaN")
+mean(pi$PI, na.rm = TRUE)
+
+pi <- read.table("subpopulation6.1.windowed.pi", header=T)
+#pi <- pi %>% filter(PI != "NaN")
+mean(pi$PI, na.rm = TRUE)
+
+pi <- read.table("subpopulation7.1.windowed.pi", header=T)
+#pi <- pi %>% filter(PI != "NaN")
+mean(pi$PI, na.rm = TRUE)
+
+pi <- read.table("subpopulation8.1.windowed.pi", header=T)
+#pi <- pi %>% filter(PI != "NaN")
+mean(pi$PI, na.rm = TRUE)
+
+pi <- read.table("subpopulation9.1.windowed.pi", header=T)
+#pi <- pi %>% filter(PI != "NaN")
+mean(pi$PI, na.rm = TRUE)
+
+pi <- read.table("subpopulation10.1.windowed.pi", header=T)
+#pi <- pi %>% filter(PI != "NaN")
+mean(pi$PI, na.rm = TRUE)
+
+#-------------------------------------------------------------------------------------------------#
+#TAJIMA
+Tajima.D.all <- read.table("PSPPC.267taxa_100kb.2.Tajima.D", header=T)
+Tajima.D.all <- Tajima.D.all %>% filter(TajimaD != "NaN")
+head(Tajima.D.all)
+hist(Tajima.D.all$TajimaD,br=20)
+boxplot(Tajima.D.all$TajimaD,ylab="Takima's D")
+summary(Tajima.D.all)
+unique(Tajima.D.all$CHROM)
+Tajima.D.all %>% summarize(mean.Tajima = mean(TajimaD, na.rm = TRUE))
+Tajima.D.all %>% group_by(CHROM) %>% dplyr::summarize(countTotal = n(), mean.Tajima = mean(TajimaD, na.rm = TRUE))
+mean(Tajima.D.all$TajimaD, na.rm = TRUE)
+
+Tajima.D <- read.table("subpopulation1.2.Tajima.D", header=T)
+#Tajima.D <- pi %>% filter(PI != "NaN")
+mean(Tajima.D$TajimaD, na.rm = TRUE)
+
+Tajima.D <- read.table("subpopulation2.2.Tajima.D", header=T)
+#Tajima.D <- pi %>% filter(PI != "NaN")
+mean(Tajima.D$TajimaD, na.rm = TRUE)
+
+Tajima.D <- read.table("subpopulation3.2.Tajima.D", header=T)
+#Tajima.D <- pi %>% filter(PI != "NaN")
+mean(Tajima.D$TajimaD, na.rm = TRUE)
+
+Tajima.D <- read.table("subpopulation4.2.Tajima.D", header=T)
+#Tajima.D <- pi %>% filter(PI != "NaN")
+mean(Tajima.D$TajimaD, na.rm = TRUE)
+
+Tajima.D <- read.table("subpopulation5.2.Tajima.D", header=T)
+#Tajima.D <- pi %>% filter(PI != "NaN")
+mean(Tajima.D$TajimaD, na.rm = TRUE)
+
+Tajima.D <- read.table("subpopulation6.2.Tajima.D", header=T)
+#Tajima.D <- pi %>% filter(PI != "NaN")
+mean(Tajima.D$TajimaD, na.rm = TRUE)
+
+Tajima.D <- read.table("subpopulation7.2.Tajima.D", header=T)
+#Tajima.D <- pi %>% filter(PI != "NaN")
+mean(Tajima.D$TajimaD, na.rm = TRUE)
+
+Tajima.D <- read.table("subpopulation8.2.Tajima.D", header=T)
+#Tajima.D <- pi %>% filter(PI != "NaN")
+mean(Tajima.D$TajimaD, na.rm = TRUE)
+
+Tajima.D <- read.table("subpopulation9.2.Tajima.D", header=T)
+#Tajima.D <- pi %>% filter(PI != "NaN")
+mean(Tajima.D$TajimaD, na.rm = TRUE)
+
+Tajima.D <- read.table("subpopulation10.2.Tajima.D", header=T)
+#Tajima.D <- pi %>% filter(PI != "NaN")
+mean(Tajima.D$TajimaD, na.rm = TRUE)
+
+#-------------------------------------------------------------------------------------------------#
+#HET
+Het.all <- read.table("PSPPC.267taxa_100kb.3.het", header=T)
+Het.all <- Het.all %>% filter(F != "NaN")
+head(Het.all)
+hist(Het.all$F,br=20)
+boxplot(Het.all$F,ylab="F")
+summary(Het.all)
+mean(Het.all$F, na.rm = TRUE)
+
+Het <- read.table("subpopulation1.3.het", header=T)
+#Het <- pi %>% filter(PI != "NaN")
+mean(Het$F, na.rm = TRUE)
+
+Het <- read.table("subpopulation2.3.het", header=T)
+#Het <- pi %>% filter(PI != "NaN")
+mean(Het$F, na.rm = TRUE)
+
+Het <- read.table("subpopulation3.3.het", header=T)
+#Het <- pi %>% filter(PI != "NaN")
+mean(Het$F, na.rm = TRUE)
+
+Het <- read.table("subpopulation4.3.het", header=T)
+#Het <- pi %>% filter(PI != "NaN")
+mean(Het$F, na.rm = TRUE)
+
+Het <- read.table("subpopulation5.3.het", header=T)
+#Het <- pi %>% filter(PI != "NaN")
+mean(Het$F, na.rm = TRUE)
+
+Het <- read.table("subpopulation6.3.het", header=T)
+#Het <- pi %>% filter(PI != "NaN")
+mean(Het$F, na.rm = TRUE)
+
+Het <- read.table("subpopulation7.3.het", header=T)
+#Het <- pi %>% filter(PI != "NaN")
+mean(Het$F, na.rm = TRUE)
+
+Het <- read.table("subpopulation8.3.het", header=T)
+#Het <- pi %>% filter(PI != "NaN")
+mean(Het$F, na.rm = TRUE)
+
+Het <- read.table("subpopulation9.3.het", header=T)
+#Het <- pi %>% filter(PI != "NaN")
+mean(Het$F, na.rm = TRUE)
+
+Het <- read.table("subpopulation10.3.het", header=T)
+#Het <- pi %>% filter(PI != "NaN")
+mean(Het$F, na.rm = TRUE)
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+```{r, include=TRUE}
+sessionInfo <- sessionInfo()
+sessionInfo
+```
