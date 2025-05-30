@@ -1,0 +1,2187 @@
+---
+title: 'Analyzing Phenotypes of the Pea Single Plant Plus Collection (PSPPC), Protein, SAA, PDg'
+author: "Carolina BT"
+date: "March 2025"
+Script: 
+output:
+  html_document: default
+  pdf_document: default
+  chunk_output_type: console
+chunk_output_type: console
+editor_options: 
+  chunk_output_type: console
+---
+
+# ##############################
+
+### Set working directory for analysis
+
+/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/
+
+``` {r, echo=FALSE}
+
+#clear environment
+rm(list = ls())
+
+print("#------------------------------------Set working directory----------------------------------------#")
+setwd("/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes/")
+getwd()
+
+print("#---------------------------------------Install/load packages-------------------------------------#")
+
+library(ggplot2)
+library(data.table) #fread
+library(dplyr)
+library(tidyverse)
+library(cowplot) #plot_grid
+library(plyr) #ddply
+library(GGally) #ggmatrix_gtable, ggpair
+library(plotly)
+library(vtable) #sumtable
+library(lme4)
+# the following packages are for Bayesian stats at the end
+# The rstan package take up to an hour to install
+library(rstanarm) #stan_lmer, Fit a Bayesian linear mixed-effects model
+library(bayesplot)
+library(shinystan)
+library(kableExtra)
+library(xml2)
+library(GGally) #ggpairs
+library(inti) #H2cal function, heritability
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+# Read 267 sample list
+
+```{r, echo=FALSE}
+
+print("#------------------------------------read list of 267 accessions----------------------------------------#")
+
+acceList_0 <- read.csv("/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/PSPCUGenoSampleKey.csv", header = T) #this is the list of 267 phenotyped accessions
+acceList_0[1:10,]
+str(acceList_0)
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+# check ID in Phenotype are in GENO
+
+```{r, echo=FALSE}
+
+print("#------------------------------------read genotype----------------------------------------#")
+
+#Add genotype names
+namesGeno <- fread('/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/PSPPC.filt.recode.012.indv', header=F)
+namesGeno <- as.data.frame(namesGeno)
+names(namesGeno)[1] <- "ID"
+head(namesGeno)
+
+table(namesGeno$ID %in% acceList_0$ID)
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+# ##############################
+
+# Read and work with the phenotypic data shared by Amod (March 03, 2025)
+
+PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.xlsx
+
+I did a lookup in excel to add ID information (SRRxxxxx) from "/project/dthavar/dilthavar/acballe/PSPPC_PopStructure_Genetics/samplelist_Powers2021.csv" 
+
+Converted to CSV for analysis (modified headers to remove spaces amnd specil characters): PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.csv
+
+Moisture (%)                            = Moisture_Per
+Protein (unadjusted)                    = Protein_unadjusted
+SAA (unadjusted)                        = SAA_unadjusted
+Dietary Fiber (unadjusted)              = Dietary_Fiber_unadjusted
+Total Starch (unadjusted)               = Total_Starch_unadjusted
+Resistance Starch (unadjusted)          = Resistance_Starch_unadjusted
+Protein (15% DB Moisture)               = Protein_15per_DB_Moisture
+SAA (15% DB Moisture)                   = SAA_15per_DB_Moisture
+Dietary Fiber (15% DB Moisture)         = Dietary_Fiber_15per_DB_Moisture
+Total Starch (15% DB Moisture)          = Total_Starch_15per_DB_Moisture
+Resistance Starch (15% DB Moisture)     = Resistance_Starch_15per_DB_Moisture
+Protein digestibility (%)               = Protein_digestibility_per
+
+``` {r, echo=FALSE}
+
+print("#------------------------------------read phenotype----------------------------------------#")
+
+PSP3 <- read.csv("/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes/PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.csv", header = T) #this is the list of 456 PSPPC accessions
+#PSP3na <- read.csv('/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/BLUPs_MoistureCorrected/PSP_20-22_Protein.csv')
+PSP3[1:2,]
+PSP3 <- PSP3 %>% arrange(Year) # arrange in descending order Year
+PSP3[1:2,8:19]
+#PSP3 <- read.csv("/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes//PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.csv", header = T) #this is the list of 456 PSPPC accessions
+PSP3[1:2,]
+str(unique(PSP3$ID)) #268
+str(unique(PSP3$GENO)) #299
+
+as.data.frame(PSP3 %>% group_by(ENV) %>% summarise(count = n(), countGENO_Unique = n_distinct(GENO), countID_Unique = n_distinct(ID)))
+
+#Check that all 267 samples are present in pheno 
+table(unique(PSP3$ID) %in% acceList_0$ID)
+table(acceList_0$ID %in% unique(PSP3$ID)) #267
+length(intersect(acceList_0$ID, unique(PSP3$ID))) #267
+
+```
+
+# as factor an numeric
+
+```{r, echo=FALSE}
+
+print("#------------------------------------make sure columns are defined as factor and numeric ----------------------------------------#")
+
+#Convert random effects to factor and numeric columns to numeric
+PSP3[1:2,]
+PSP3[,1:8] <- lapply(PSP3[,1:8], as.factor)
+PSP3[,9:20] <- lapply(PSP3[,9:20], as.numeric)
+str(PSP3)
+
+#count and correct zeros to NA. No zeros here.
+colSums(PSP3==0, na.rm = T) #This calculates the number of zeros in each column
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+# summarize data
+
+``` {r, echo=FALSE}
+
+print("#------------------------------------Select 267 acessions----------------------------------------#")
+
+str(PSP3 %>% filter(ID %in% acceList_0$ID))
+
+PSP3_267 <- PSP3 %>% filter(ID %in% acceList_0$ID)
+length(unique(PSP3_267$ID))
+str(PSP3_267)
+head(PSP3_267)
+
+print("#------------------------------------summaries----------------------------------------#")
+
+#check data
+as.data.frame(PSP3 %>% group_by(ENV) %>% dplyr::summarise(count = n(), countGENO_Unique = n_distinct(GENO), countID_Unique = n_distinct(ID)))
+as.data.frame(PSP3 %>% group_by(Year) %>% summarise(count = n()))
+as.data.frame(PSP3 %>% group_by(GENO) %>% summarise(count = n()))
+
+sumtable(PSP3 %>% select(c(9:20)))
+sumtable(PSP3 %>% select(c(9:20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+sumtable(PSP3 %>% filter(ENV =="RAWL20") %>% select(c(9:20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+sumtable(PSP3 %>% filter(ENV =="CLEM21") %>% select(c(9:20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+sumtable(PSP3 %>% filter(ENV =="CLEM22") %>% select(c(9:20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+
+
+print('---------Correlations for ALL data---------')
+
+ggpairs(data=(PSP3 %>% dplyr::select(9:20) ), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)))
+
+PSP3All <- PSP3 %>% dplyr::select(1,9:20) 
+PSP3All[1:2,]
+order <- c('RAWL20', 'CLEM21', 'CLEM22') 
+ggpairs(PSP3All, mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 3, na.rm=TRUE, method = "pearson")), columnLabels = c("Env", "Moisture (%)", "Protein", "SAA", "Fiber", "T. Starch", "Res. Starch", "Protein (15%)", "SAA (15%)", "Fiber (15%)", "T. Starch (15%)", "Res. Starch (15%)", "PDg (%)")) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+
+#Correlations
+print('---------Correlations for unadjusted data---------')
+unadjusted <- PSP3 %>% dplyr::select(matches("ENV") | matches("Moisture_per") | matches("unadjusted") | matches("digestibility")) 
+unadjusted[1:2,]
+order <- c('RAWL20', 'CLEM21', 'CLEM22') 
+ggpairs(unadjusted, mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 3, na.rm=TRUE, method = "pearson")), columnLabels = c("Env", "Moisture (%)", "Protein", "SAA", "Fiber", "T. Starch", "Res. Starch", "PDg (%)")) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+
+print('---------Correlations for adjusted data (15% DB Moisture)---------')
+adjusted <- PSP3 %>% dplyr::select(matches("ENV") | matches("per")) 
+adjusted[1:2,]
+order <- c('RAWL20', 'CLEM21', 'CLEM22') 
+ggpairs(adjusted, mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 3, na.rm=TRUE, method = "pearson")), columnLabels = c("Env", "Moisture (%)", "Protein (15%)", "SAA (15%)", "Fiber (15%)", "T. Starch (15%)", "Res. Starch (15%)", "PDg (%)")) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+
+
+print("#------------------------------------summaries with selected traits ----------------------------------------#")
+
+PSP3
+
+#check data
+as.data.frame(PSP3 %>% select(c(1,2,3,4,5,6,7,8,9,15,16,17,18,20)) %>% group_by(ENV) %>% summarise())
+as.data.frame(PSP3 %>% select(c(1,2,3,4,5,6,7,8,9,15,16,17,18,20)) %>% group_by(Year) %>% summarise())
+as.data.frame(PSP3 %>% select(c(1,2,3,4,5,6,7,8,9,15,16,17,18,20))%>% group_by(GENO) %>% summarise(count = n()))
+
+sumtable(PSP3 %>% select(c(9,15,16,17,18,20)))
+st((PSP3 %>% select(c(1,9,15,16,17,18,20))), group = 'ENV', group.long = TRUE)
+sumtable(PSP3 %>% select(c(9,15,16,17,18,20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+sumtable(PSP3 %>% filter(ENV =="RAWL20" | ENV =="CLEM21") %>% select(c(9,15,16,17,18,20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+sumtable(PSP3 %>% filter(ENV =="RAWL20") %>% select(c(9,15,16,17,18,20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+sumtable(PSP3 %>% filter(ENV =="CLEM21") %>% select(c(9,15,16,17,18,20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+sumtable(PSP3 %>% filter(ENV =="CLEM22") %>% select(c(9,15,16,17,18,20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+
+as.data.frame(PSP3 %>% dplyr::summarize(countTotal = n(), countGENO_Unique = n_distinct(GENO)))
+
+print('---------Correlations for ALL data---------')
+
+ggpairs(data=(PSP3 %>% dplyr::select(9,15,16,17,18,20)), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)))
+
+PSP3All <- PSP3 %>% dplyr::select(1,9,15,16,17,18,20) 
+PSP3All[1:2,]
+order <- c('RAWL20', 'CLEM21', 'CLEM22') 
+ggpairs(PSP3All, mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)), upper = list(continuous = wrap("cor", size = 5, na.rm=TRUE, method = "pearson")), columnLabels = c("Env", "Moisture (%)", "Protein (15%)", "SAA (15%)", "Fiber (15%)", "T. Starch (15%)", "PDg (%)")) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 20), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+ggpairs(PSP3All, mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 5, na.rm=TRUE, method = "pearson")), columnLabels = c("Env", "Moisture (%)", "Protein (15% MC)", "SAA (15% MC)", "Fiber (15% MC)", "T. Starch (15% MC)", "PDg (%)")) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 20), strip.text.y = element_text(angle = 90), strip.text.x = element_text(angle = 0), axis.text.x = element_text(angle = 90))
+
+#Save plot
+# Create and save the plot directly
+ggsave(
+  plot = ggpairs(PSP3All, mapping = aes(color = factor(ENV, levels = order), fill = factor(ENV, levels = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 5, na.rm = TRUE, method = "pearson")), columnLabels = c("Env", "Moisture (%)", "Protein (15% MC)", "SAA (15% MC)", "Fiber (15% MC)", "T. Starch (15% MC)", "PDg")) +
+    scale_colour_manual(values = c('darkslategray4', '#A6CEE3', '#377eb8')) +
+    scale_fill_manual(values = c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 20), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 90), axis.text.x = element_text(angle = 90)),
+  filename = "PSP3All_Pheno_correlations.pdf",
+  path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes",
+  height = 17,
+  width = 16)
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+# Normality test
+
+If the value of p is equal to or less than 0.05, then the hypothesis of normality will be rejected by the Shapiro test
+
+In a Shapiro-Wilk test for normality, the p-value indicates the likelihood that your data is from a normal distribution. A p-value greater than 0.05 suggests that your data does not deviate significantly from normality, meaning you should accept the null hypothesis that the data is normally distributed.
+
+P is equal to or less than 0.05 ---> NOT normally distributed
+ 
+```{r, echo=FALSE}
+
+print("#------------------------------------normality----------------------------------------#")
+   
+head(PSP3)
+str(PSP3)
+
+shapiro.test(PSP3$Moisture_per) # p-value = 0.0001573
+shapiro.test(PSP3$Protein_15per_DB_Moisture) # p-value = 3.159e-09
+shapiro.test(PSP3$SAA_15per_DB_Moisture) # p-value < 2.2e-16
+shapiro.test(PSP3$Dietary_Fiber_15per_DB_Moisture) # p-value = 1.553e-09
+shapiro.test(PSP3$Total_Starch_15per_DB_Moisture) # p-value = 2.957e-09
+shapiro.test(PSP3$Protein_digestibility_per) # p-value < 2.2e-16
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+Visualize data
+
+Subset data by location
+
+```{r, echo=FALSE}
+
+print("#------------------------------------subset----------------------------------------#")
+
+#check data
+as.data.frame(PSP3 %>% group_by(ENV) %>% summarise())
+unique(PSP3$ENV)
+as.data.frame(PSP3 %>% group_by(Year) %>% summarise())
+as.data.frame(PSP3 %>% group_by(GENO) %>% summarise(count = n()))
+as.data.frame(PSP3 %>% dplyr::summarize(countTotal = n(), countGENO_Unique = n_distinct(GENO)))
+              
+str(PSP3)
+RAWL20 <- subset(PSP3, ENV == 'RAWL20')
+CLEM21 <- subset(PSP3, ENV == 'CLEM21')
+CLEM22 <- subset(PSP3, ENV == 'CLEM22')
+RA20CL21 <- full_join(RAWL20, CLEM21) #combined RAWL20 and RAWL21, which included the full PSP collection. (CLEM22 was only advance lines.)
+nrow(RAWL20) + nrow(CLEM21) == nrow(RA20CL21)
+
+```
+
+#heritability
+
+```{r}
+
+head(PSP3)
+length(unique(PSP3$GENO)) #299
+length(unique(PSP3$Year)) #3
+unique(PSP3$BLOCK)
+mean(as.numeric(PSP3$BLOCK))#1.7
+length(unique(PSP3$BLOCK)) #3
+length(unique(PSP3$ENV)) #3
+
+mean(as.data.frame(PSP3 %>% group_by(GENO, ENV) %>% dplyr::summarize(countTotal = n()))[,3]) #2
+n.env <- length(levels(PSP3$ENV))
+n.env #3
+
+print("#------------------------------------H2 moisture----------------------------------------#")
+
+ans1 <- mmes(Moisture_per~1,
+             random= ~ GENO + ENV + ENV:GENO + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+# Component	            Meaning
+# GENO:mu:mu	          Genetic variance (V1)
+# ENV:mu:mu	            Environment variance (V2)
+# ENV:GENO:mu:mu	      G×E interaction variance (V3)
+# ENV:BLOCK:mu:mu	      Block variance (V4) – here it's 0
+# units:mu:mu	          Residual variance (V5)
+
+vpredict(ans1, h2 ~ V1 / ( V1 + (V3/n.env) + (V5/(2*n.env)))) #h2 0.1033207
+# This formula estimates broad-sense heritability (H²) across environments, assuming:
+# V1: genetic variance (Name)
+# V3: genotype × environment interaction variance
+# V5: residual variance
+# The denominator includes variance contributions per environment (scaled by n.env) 
+# and assumes 2 replications per genotype-environment combination (that’s why residual is divided by 2 × n.env).
+
+#doing manually
+Vg <- 0.02829821
+Vge <- 0.00000000
+Ve <- 1.47353357
+Vg / ( Vg + (Vge/n.env) + (Ve/(2*n.env))) #h2 0.1033207
+
+#no GENXENV interaction, is zero
+ans1 <- mmes(Moisture_per~1,
+             random= ~ GENO + ENV + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+vpredict(ans1, h2 ~ V1 / ( V1 + (V4/(2*n.env)))) #h2 0.1033207
+
+stan_model <- stan_lmer(Moisture_per ~ (1|GENO) + (1|ENV/BLOCK), data=PSP3, adapt_delta = 0.99, seed=456, refresh = 0)
+print(VarCorr(stan_model), comp = "Variance")
+summary(stan_model)
+
+        
+print("#------------------------------------H2 protein----------------------------------------#")
+
+ans1 <- mmes(Protein_15per_DB_Moisture~1,
+             random= ~ GENO + ENV + ENV:GENO + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+#get H2
+vpredict(ans1, h2 ~ V1 / ( V1 + (V3/n.env) + (V5/(2*n.env)))) # h2 0.2144781
+
+#doing manually
+Vg <- 0.031999504
+Vge <- 0.00000000
+Ve <- 0.703185545
+Vg / ( Vg + (Vge/n.env) + (Ve/(2*n.env)))
+
+#no GENXENV interaction, is zero
+ans1 <- mmes(Protein_15per_DB_Moisture~1,
+             random= ~ GENO + ENV + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+vpredict(ans1, h2 ~ V1 / ( V1 + (V4/(2*n.env)))) #h2 0.2144794
+
+print("#------------------------------------H2 SAA ----------------------------------------#")
+
+ans1 <- mmes(SAA_15per_DB_Moisture~1,
+             random= ~ GENO + ENV + ENV:GENO + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+#get H2
+vpredict(ans1, h2 ~ V1 / ( V1 + (V3/n.env) + (V5/(2*n.env)))) # h2 0.1310607 
+
+#doing manually
+Vg <- 7.085778e-05
+Vge <- 3.698467e-04
+Ve <- 2.079051e-03
+Vg / ( Vg + (Vge/n.env) + (Ve/(2*n.env)))
+
+#no GENXENV interaction, is zero
+ans1 <- mmes(SAA_15per_DB_Moisture~1,
+             random= ~ GENO + ENV + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+vpredict(ans1, h2 ~ V1 / ( V1 + (V4/(2*n.env)))) #h2 0.3409711 
+
+print("#------------------------------------H2 fiber ----------------------------------------#")
+
+ans1 <- mmes(Dietary_Fiber_15per_DB_Moisture~1,
+             random= ~ GENO + ENV + ENV:GENO + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+#get H2
+vpredict(ans1, h2 ~ V1 / ( V1 + (V3/n.env) + (V5/(2*n.env)))) # h2 -0.07935467 
+
+#doing manually
+Vg <- -0.01969034
+Vge <- 0.00000000
+Ve <- 1.60692743
+Vg / ( Vg + (Vge/n.env) + (Ve/(2*n.env)))
+
+#no GENXENV interaction, is zero
+ans1 <- mmes(Dietary_Fiber_15per_DB_Moisture~1,
+             random= ~ GENO + ENV + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+vpredict(ans1, h2 ~ V1 / ( V1 + (V4/(2*n.env)))) #h2 = 0
+
+print("#------------------------------------H2 starch ----------------------------------------#")
+
+ans1 <- mmes(Total_Starch_15per_DB_Moisture~1,
+             random= ~ GENO + ENV + ENV:GENO + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+#get H2
+vpredict(ans1, h2 ~ V1 / ( V1 + (V3/n.env) + (V5/(2*n.env)))) # h2 0.1467948  
+
+#doing manually
+Vg <- 0.18916864
+Vge <- 0.19722461
+Ve <- 6.20249950
+Vg / ( Vg + (Vge/n.env) + (Ve/(2*n.env))) #0.1467948
+
+#no GENXENV interaction, is zero
+ans1 <- mmes(Total_Starch_15per_DB_Moisture~1,
+             random= ~ GENO + ENV + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+vpredict(ans1, h2 ~ V1 / ( V1 + (V4/(2*n.env)))) #h2 0.1933869 
+
+print("#------------------------------------H2 Protein_digestibility ----------------------------------------#")
+
+ans1 <- mmes(Protein_digestibility_per~1,
+             random= ~ GENO + ENV + ENV:GENO + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+#get H2
+vpredict(ans1, h2 ~ V1 / ( V1 + (V3/n.env) + (V5/(2*n.env)))) # h2 -0.01443302 
+
+#doing manually
+Vg <- -0.001124958
+Vge <- 0.00000000
+Ve <- 0.474409919
+Vg / ( Vg + (Vge/n.env) + (Ve/(2*n.env)))
+
+#no GENXENV interaction, is zero
+ans1 <- mmes(Protein_digestibility_per~1,
+             random= ~ GENO + ENV + GENO:BLOCK, #Env:Block: block effect nested within environment
+             rcov= ~ units, nIters=10,
+             data=PSP3, verbose = FALSE)
+summary(ans1)$varcomp
+vpredict(ans1, h2 ~ V1 / ( V1 + (V4/(2*n.env)))) #h2 = 0 
+
+```
+
+PCA biplot
+```{r}
+
+print("#----------------------------------------------------------------------------#")
+#PCA biplot with subpopulation info
+sorted_df <- read.csv("/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/figures/Admix_PCA_MapPies/all_admix.csv", header = T) #this is the admixture results
+colnames(sorted_df)[1] <- "Taxa"
+sorted_df <- sorted_df %>% select(c("Taxa", "group"))
+sorted_df[1:6,]
+
+str(PSP3_267)
+PSP3_267[1:2,]
+dim(PSP3_267)
+colnames(PSP3_267)[8]<-"Taxa"
+
+myY_pheno267_sub <- Reduce(function(...) merge(..., fix.by='Taxa', all.x=TRUE), list(sorted_df, PSP3_267)) #Put data together
+myY_pheno267_sub <- myY_pheno267_sub %>% select(matches("Taxa") | matches("group") | matches("per") & !matches("Resistance"))
+head(myY_pheno267_sub)
+myY_pheno267_sub <- myY_pheno267_sub[complete.cases(myY_pheno267_sub),] #remove rows with NAs
+myY_pheno267_sub.pca <- prcomp(myY_pheno267_sub[, -(1:2)],  scale = TRUE) #remove taxa
+fviz_pca_var(myY_pheno267_sub.pca, col.var = "contrib", gradient.cols = c("blue", "yellow", "red"), repel = TRUE)
+p1 <- fviz_pca_var(myY_pheno267_sub.pca, col.var = "contrib", gradient.cols = c("blue", "yellow", "red"), repel = TRUE)
+p1
+#fviz_pca_biplot(myY_pheno267_sub.pca, col.var = "contrib", gradient.cols = c("blue", "yellow", "red"), repel = TRUE, label="var")
+#fviz_pca_biplot(myY_pheno267_sub.pca, label="var", col.var = "blue", habillage=myY_pheno267_sub$group, addEllipses=FALSE, ellipse.level=0.95)
+
+myY_pheno267_sub$group <- as.factor(myY_pheno267_sub$group)
+p2 <- fviz_pca_biplot(myY_pheno267_sub.pca, 
+                repel = TRUE, 
+                label = "var",
+                col.var = "blue",
+                habillage = myY_pheno267_sub$group,
+                palette = c("#984ea3","#A6CEE3","#377eb8","#f781bf","#ffd92f","#e41a1c","#FF7F00","#6A3D9A","#a65628","#33A02C"),
+                geom.ind = "point",
+                pointshape = 19,
+                pointsize = 1)
+p2
+# Combine into one figure
+PCA_biplot_pheno <- plot_grid(p1, p2, 
+                              nrow = 1, 
+                              labels = c("A", "B"), 
+                              scale = 0.95, 
+                              label_size = 22)
+PCA_biplot_pheno
+
+#Save plot
+ggsave(plot = PCA_biplot_pheno, file = paste("PCA_biplot_pheno.pdf", sep = ""), height = 8, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes") #note that ggsave will save the last plot you generated
+ggsave(plot = PCA_biplot_pheno, file = paste("PCA_biplot_pheno.png", sep = ""), height = 8, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes") #note that ggsave will save the last plot you generated
+
+
+```
+
+Function to compute mean and n 
+
+```{r}
+stat_box_data <- function(y) {
+  return(data.frame(y = 0.5+1.1*max(y),  #may need to modify this depending on your data
+                    label = paste('count =', length(y), '\n', 'mean =', round(mean(y), 1), '\n')))
+                              }
+```
+
+Compare environments for each trait. Notice that environments are similar.
+
+```{r fig.height=8, fig.width=14, warning=FALSE}
+
+PSP3 %>%
+  pivot_longer(Moisture_per:Protein_digestibility_per, names_to = "TraitName", values_to = "Value") %>% 
+  ggplot(aes(x=ENV, y=Value, fill=ENV))+
+  geom_violin(width=1)+
+  geom_boxplot(color='black', width = 0.07)+
+  stat_summary(fun.data = stat_box_data, geom = 'text', hjust = 0.5, vjust = 0.9)+
+  facet_wrap(~TraitName, scale = 'free')
+
+sumtable(PSP3 %>% filter(ENV =="RAWL20") %>% select(c(9:20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+sumtable(PSP3 %>% filter(ENV =="CLEM21") %>% select(c(9:20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+sumtable(PSP3 %>% filter(ENV =="CLEM22") %>% select(c(9:20)), summ=c('notNA(x)','mean(x)','sd(x)','min(x)','max(x)'), digits=3)
+
+```
+
+Compare blocks and environments for each trait. Notice the blocks/reps are close (low variance).
+
+```{r fig.height=8, fig.width=14, warning=FALSE}
+PSP3 %>%
+  pivot_longer(Moisture_per:Resistance_Starch_unadjusted, names_to = "TraitName", values_to = "Value") %>% 
+  ggplot(aes(x=BLOCK, y=Value, fill = ENV))+
+    geom_violin(width = 1)+
+    geom_boxplot(color='black', width = 0.25)+
+    stat_summary(fun.data = stat_box_data, geom = 'text', hjust = 0.5, vjust = 0.9)+
+    facet_wrap(~TraitName + ENV, scales = 'free')
+
+PSP3 %>%
+  pivot_longer(Protein_15per_DB_Moisture:Protein_digestibility_per, names_to = "TraitName", values_to = "Value") %>% 
+  ggplot(aes(x=BLOCK, y=Value, fill = ENV))+
+    geom_violin(width = 1)+
+    geom_boxplot(color='black', width = 0.25)+
+    stat_summary(fun.data = stat_box_data, geom = 'text', hjust = 0.5, vjust = 0.9)+
+    facet_wrap(~TraitName + ENV, scales = 'free')
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+# CALCULATE BLUPS 
+
+Fit mixed models and extract BLUPs.
+Use for loops to model all traits at once.
+
+All locations
+Randomized complete block design with multiple environments would fit this model:
+
+Y ~ (1|GENO) + (1|ENV) + (1|ENV:BLOCK)
+
+There appears to be little variance associated with BLOCK, for some traits (exclude block for those)
+boundary (singular) fit: see help('isSingular')
+
+We must either drop BLOCK from the model or use a different modeling approach (i.e. Bayesian).
+Let's opt for dropping the term.
+
+Let's run the model and see. The code will also save the BLUPs to a data frame.
+
+#!!!!!!!!!!!!!!!!!!!
+#for some traits there is two issues --> TRY removing termns
+# boundary (singular) fit: see help('isSingular')” means that the model has zero or near-zero variance for one or more random effects. 
+# This usually happens when there isn't enough variation in the data to estimate the random effect variance properly.
+
+even dropping BLOCK, traits 12 (Dietary_Fiber_unadjusted), 17 (Dietary_Fiber_15per_DB_Moisture) and 20 (Protein_digestibility_per) still have issues
+
+ALL TRAITS with Block
+
+```{r}
+
+print("#------------------------------------all traits with block----------------------------------------#")
+
+#WITH BLOCK
+df <- PSP3
+PSP3Bblups <- unique(df[,c(7),drop=F])
+#trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+#trait <- colnames(df %>% select(c(9,12,17,20))) # traits with issues with singularity current model
+trait <- colnames(df %>% select(c(10,11,13,14,15,16,18,19))) # traits fine
+trait
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  model <- lmer(paste0(trait[i], " ~ (1|GENO) + (1|ENV) + (1|ENV:BLOCK)"), data=df)
+  random_effects <- ranef(model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  PSP3Bblups <- merge(PSP3Bblups, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(summary(model))
+  print(isSingular(model, tol = 1e-4))# Check if model is singular
+  print(paste("### Finish trait:", trait[i], "###"))
+}
+PSP3Bblups[1:2,]
+write_csv(PSP3Bblups,"PSP3Bblups.csv")
+
+print("#------------------------------------all traits without block----------------------------------------#")
+#WITHOUT BLOCK
+df <- PSP3
+PSP3NBblups <- unique(df[,c(7),drop=F])
+#trait <- colnames(df %>% select(c(9,12,17,20))) # traits with issues with singularity previous model
+#trait <- colnames(df %>% select(c(12,17,20))) # traits with issues with singularity current model
+trait <- colnames(df %>% select(c(9))) # traits fine now
+trait
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  model <- lmer(paste0(trait[i], " ~ (1|GENO) + (1|ENV)"), data=df)
+  random_effects <- ranef(model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  PSP3NBblups <- merge(PSP3NBblups, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(summary(model))
+  print(isSingular(model, tol = 1e-4))# Check if model is singular
+  print(paste("### Finish trait:", trait[i], "###"))
+}
+PSP3NBblups[1:2,]
+write_csv(PSP3NBblups,"PSP3NBblups.csv")
+
+print("#------------------------------------WITHOUT BLOCK and ENV----------------------------------------#")
+#WITHOUT BLOCK and ENV
+df <- PSP3
+PSP3NBEblups <- unique(df[,c(7),drop=F])
+#trait <- colnames(df %>% select(c(12,17,20))) # traits with issues with singularity previous model
+#trait <- colnames(df %>% select(c(12,17))) # traits with issues with singularity current model
+trait <- colnames(df %>% select(c(20))) # traits fine now
+trait
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  model <- lmer(paste0(trait[i], " ~ (1|GENO)"), data=df)
+  random_effects <- ranef(model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  PSP3NBEblups <- merge(PSP3NBEblups, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(summary(model))
+  print(isSingular(model, tol = 1e-4))# Check if model is singular
+  print(paste("### Finish trait:", trait[i], "###"))
+}
+PSP3NBEblups[1:2,]
+write_csv(PSP3NBEblups,"PSP3NBEblups.csv")
+
+print("#------------------------------------what about trait with singularity issue----------------------------------------#")
+            #traits 12 (Dietary_Fiber_unadjusted), 17 (Dietary_Fiber_15per_DB_Moisture) have little variation for genotype
+            #traits with singularity, COULD NOT FIX
+            df <- PSP3
+            PSP3sing <- unique(df[,c(7),drop=F])
+            trait <- colnames(df %>% select(c(12,17))) # traits fine now
+            trait
+            for (i in 1:length(trait)){
+              print(paste("### Processing trait:", trait[i], "###"))
+              model <- lmer(paste0(trait[i], " ~ (1|GENO)"), data=df)
+              random_effects <- ranef(model)$GENO
+              random_effects$GENO <- rownames(random_effects)
+              colnames(random_effects) <- c(trait[i], "GENO")
+              PSP3sing <- merge(PSP3sing, random_effects, all = T)
+              print(paste("Trait", i, trait[i], sep= " "))
+              #print(summary(model))
+              print(isSingular(model, tol = 1e-4))# Check if model is singular
+              print(paste("### Finish trait:", trait[i], "###"))
+            }
+
+```
+
+Now, let's run the models for the subset data.
+First, the combined RAWL20 and RAWL21, which included the full PSP collection. (CLEM22 was only advance lines.)
+
+```{r}
+
+print("#------------------------------------RA20CL21 with block----------------------------------------#")
+
+df <- RA20CL21
+RA20CL21Bblups <- unique(df[,c(7),drop=F])
+#trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+#trait <- colnames(df %>% select(c(9,12,13,14,17,19,20))) # traits with issues with singularity current model
+trait <- colnames(df %>% select(c(10,11,15,16,18))) # traits fine
+trait
+#WITH BLOCK
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  model <- lmer(paste0(trait[i], " ~ (1|GENO) + (1|ENV) + (1|ENV:BLOCK)"), data=df)
+  random_effects <- ranef(model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  RA20CL21Bblups <- merge(RA20CL21Bblups, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(summary(model))
+  print(isSingular(model, tol = 1e-4))# Check if model is singular
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+write_csv(RA20CL21Bblups,"RA20CL21Bblups.csv") 
+
+print("#------------------------------------RA20CL21 without block----------------------------------------#")
+
+#WITHOUT BLOCK
+df <- RA20CL21
+RA20CL21NBblups <- unique(df[,c(7),drop=F])
+#trait <- colnames(df %>% select(c(9,12,13,14,17,19,20))) # traits with issues with singularity previous model
+#trait <- colnames(df %>% select(c(12,13,14,17,19,20))) # traits with issues with singularity current model
+trait <- colnames(df %>% select(c(9))) # traits fine
+trait
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  model <- lmer(paste0(trait[i], " ~ (1|GENO) + (1|ENV)"), data=df)
+  random_effects <- ranef(model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  RA20CL21NBblups <- merge(RA20CL21NBblups, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(summary(model))
+  print(isSingular(model, tol = 1e-4))# Check if model is singular
+  print(paste("### Finish trait:", trait[i], "###"))
+}
+write_csv(RA20CL21NBblups,"RA20CL21NBblups.csv") 
+
+print("#------------------------------------WITHOUT BLOCK and ENV----------------------------------------#")
+#WITHOUT BLOCK and ENV
+df <- RA20CL21
+RA20CL21NBEblups <- unique(df[,c(7),drop=F])
+#trait <- colnames(df %>% select(c(12,13,14,17,19,20))) # traits with issues with singularity previous model
+#trait <- colnames(df %>% select(c(12,14,17,19,20))) # traits with issues with singularity current model
+trait <- colnames(df %>% select(c(13))) # traits fine now
+trait
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  model <- lmer(paste0(trait[i], " ~ (1|GENO)"), data=df)
+  random_effects <- ranef(model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  RA20CL21NBEblups <- merge(RA20CL21NBEblups, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(summary(model))
+  print(isSingular(model, tol = 1e-4))# Check if model is singular
+  print(paste("### Finish trait:", trait[i], "###"))
+}
+write_csv(RA20CL21NBEblups,"RA20CL21NBEblups.csv")
+
+print("#------------------------------------what about trait with singularity issue----------------------------------------#")
+            #traits with singularity, COULD NOT FIX
+            #WITHOUT BLOCK and env
+            df <- RA20CL21
+            RA20CL21sing <- unique(df[,c(7),drop=F])
+            trait <- colnames(df %>% select(c(12,14,17,19,20))) # traits with issues with singularity previous model
+            trait
+            for (i in 1:length(trait)){
+              print(paste("### Processing trait:", trait[i], "###"))
+              model <- lmer(paste0(trait[i], " ~ (1|GENO)"), data=df)
+              random_effects <- ranef(model)$GENO
+              random_effects$GENO <- rownames(random_effects)
+              colnames(random_effects) <- c(trait[i], "GENO")
+              RA20CL21sing <- merge(RA20CL21sing, random_effects, all = T)
+              print(paste("Trait", i, trait[i], sep= " "))
+              #print(summary(model))
+              print(isSingular(model, tol = 1e-4))# Check if model is singular
+              print(paste("### Finish trait:", trait[i], "###"))
+            }
+
+```
+
+Now let's run models for the separate locations (RAWL20, CLEM21, CLEM22).
+An RCBD with single environment would fit the model:
+
+Y ~ (1|GENO) + (1|BLOCK)
+
+Now RAWL20
+
+```{r}
+
+print("#------------------------------------RAWL20 with block----------------------------------------#")
+
+#WITH BLOCK
+df <- RAWL20
+RAWL20Bblups <- unique(df[,c(7),drop=F])
+#trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+#trait <- colnames(df %>% select(c(12,13,14,17,19))) # traits with issues with singularity current model
+trait <- colnames(df %>% select(c(9,10,11,15,16,18,20))) # traits fine
+trait
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  model <- lmer(paste0(trait[i], " ~ (1|GENO) + (1|BLOCK)"), data=df)
+  random_effects <- ranef(model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  RAWL20Bblups <- merge(RAWL20Bblups, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(summary(model))
+  print(isSingular(model, tol = 1e-4))# Check if model is singular
+  print(paste("### Finish trait:", trait[i], "###"))
+}  
+write_csv(RAWL20Bblups,"RAWL20Bblups.csv") 
+
+print("#------------------------------------RAWL20 without block----------------------------------------#")
+
+#WITHOUT BLOCK
+df <- RAWL20
+RAWL20NBblups <- unique(df[,c(7),drop=F])
+#trait <- colnames(df %>% select(c(12,13,14,17,19))) # traits with issues with singularity previous model
+#trait <- colnames(df %>% select(c(12,14,17,19))) # traits with issues with singularity current model
+trait <- colnames(df %>% select(c(13))) # traits fine
+trait
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  model <- lmer(paste0(trait[i], " ~ (1|GENO)"), data=df)
+  random_effects <- ranef(model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  RAWL20NBblups <- merge(RAWL20NBblups, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(summary(model))
+  print(isSingular(model, tol = 1e-4))# Check if model is singular
+  print(paste("### Finish trait:", trait[i], "###"))
+}
+write_csv(RAWL20NBblups,"RAWL20NBblups.csv") 
+
+print("#------------------------------------what about trait with singularity issue----------------------------------------#")
+            #traits with singularity, COULD NOT FIX
+            #WITHOUT BLOCK
+            df <- RAWL20
+            RAWL20sing <- unique(df[,c(7),drop=F])
+            trait <- colnames(df %>% select(c(12,14,17,19))) # traits with issues with singularity previuos model
+            trait
+            for (i in 1:length(trait)){
+              print(paste("### Processing trait:", trait[i], "###"))
+              model <- lmer(paste0(trait[i], " ~ (1|GENO)"), data=df)
+              random_effects <- ranef(model)$GENO
+              random_effects$GENO <- rownames(random_effects)
+              colnames(random_effects) <- c(trait[i], "GENO")
+              RAWL20sing <- merge(RAWL20sing, random_effects, all = T)
+              print(paste("Trait", i, trait[i], sep= " "))
+              #print(summary(model))
+              print(isSingular(model, tol = 1e-4))# Check if model is singular
+              print(paste("### Finish trait:", trait[i], "###"))
+            }
+
+```
+
+Now CLEM21
+
+```{r}
+
+print("#------------------------------------CLEM21 with block----------------------------------------#")
+
+#WITH BLOCK
+df <- CLEM21
+CLEM21Bblups <- unique(df[,c(7),drop=F])
+#trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+#trait <- colnames(df %>% select(c(9,10,11,12,15,16,17,20))) # traits with issues with singularity current model
+trait <- colnames(df %>% select(c(13,14,18,19))) # traits fine
+trait
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  model <- lmer(paste0(trait[i], " ~ (1|GENO) + (1|BLOCK)"), data=df)
+  random_effects <- ranef(model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  CLEM21Bblups <- merge(CLEM21Bblups, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  #print(summary(model))
+  print(isSingular(model, tol = 1e-4))# Check if model is singular
+  print(paste("### Finish trait:", trait[i], "###"))
+}  
+write_csv(CLEM21Bblups,"CLEM21Bblups.csv") 
+
+print("#------------------------------------what about trait with singularity issue----------------------------------------#")
+            #traits with singularity, COULD NOT FIX
+            #WITHOUT BLOCK
+            df <- CLEM21
+            CLEM21NBblups <- unique(df[,c(7),drop=F])
+            CLEM21NBblups
+            trait <- colnames(df %>% select(c(9,10,11,12,15,16,17,20))) # traits with issues with singularity previous model
+            trait
+            for (i in 1:length(trait)){
+              print(paste("### Processing trait:", trait[i], "###"))
+              model <- lmer(paste0(trait[i], " ~ (1|GENO)"), data=df)
+              random_effects <- ranef(model)$GENO
+              random_effects$GENO <- rownames(random_effects)
+              colnames(random_effects) <- c(trait[i], "GENO")
+              CLEM21NBblups <- merge(CLEM21NBblups, random_effects, all = T)
+              print(paste("Trait", i, trait[i], sep= " "))
+              #print(summary(model))
+              print(isSingular(model, tol = 1e-4))# Check if model is singular
+              print(paste("### Finish trait:", trait[i], "###"))
+}
+
+```
+
+Let's try CLEM22. We must ignore SAA_unadjusted and SAA_15per_DB_Moisture as traits, since no data for CLEM22.
+
+```{r}
+
+print("#------------------------------------CLEM22 with block----------------------------------------#")
+
+#WITH BLOCK
+df <- CLEM22
+CLEM22Bblups <- unique(df[,c(7),drop=F])
+CLEM22Bblups
+#trait <- colnames(df %>% select(c(9,10,12,13,14,15,17,18,19,20))) # all traits, except SAA_unadjusted and SAA_15per_DB_Moisture as traits, since no data for CLEM22.
+#trait <- colnames(df %>% select(c(9,12,13,14,15,17,18,19,20))) # # traits with issues with singularity current model
+trait <- colnames(df %>% select(c(10))) # traits fine
+trait
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  model <- lmer(paste0(trait[i], " ~ (1|GENO) + (1|BLOCK)"), data=df)
+  random_effects <- ranef(model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  CLEM22Bblups <- merge(CLEM22Bblups, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  p#rint(summary(model))
+  print(isSingular(model, tol = 1e-4))# Check if model is singular
+  print(paste("### Finish trait:", trait[i], "###"))
+}
+write_csv(CLEM22Bblups,"CLEM22Bblups.csv") 
+
+#------------------------------------what about trait with singularity issue----------------------------------------#")
+            #traits with singularity, COULD NOT FIX, NO VARIANCE FOR GENOTYPE
+            #WITHOUT BLOCK
+            df <- CLEM22
+            CLEM22NBblups <- unique(df[,c(7),drop=F])
+            CLEM22NBblups
+            trait <- colnames(df %>% select(c(9,12,13,14,15,17,18,19,20))) # # traits with issues with singularity previous model
+            trait
+            for (i in 1:length(trait)){
+              print(paste("### Processing trait:", trait[i], "###"))
+              model <- lmer(paste0(trait[i], " ~ (1|GENO)"), data=df)
+              random_effects <- ranef(model)$GENO
+              random_effects$GENO <- rownames(random_effects)
+              colnames(random_effects) <- c(trait[i], "GENO")
+              CLEM22NBblups <- merge(CLEM22NBblups, random_effects, all = T)
+              print(paste("Trait", i, trait[i], sep= " "))
+              #print(summary(model))
+              print(isSingular(model, tol = 1e-4))# Check if model is singular
+              print(paste("### Finish trait:", trait[i], "###"))
+            }
+```
+
+Now let's merge all of our blups into two dataframe. We'll read the data from CSV, since reproducing the results from the original data takes a long time.
+
+```{r paged.print=FALSE}
+
+################
+################ Put all files together
+
+df <- PSP3
+head(df)
+PSP3_BLUPs <- unique(df[,c(7,8),drop=F])
+PSP3_BLUPs
+head(PSP3_BLUPs)
+
+BLUPfiles <- list.files(pattern = "blups.csv") #take names of files that have "blups.csv" in the name
+BLUPfiles
+BLUPfiles <- c("PSP3Bblups.csv", "PSP3NBblups.csv", "PSP3NBEblups.csv", "RA20CL21Bblups.csv", "RA20CL21NBblups.csv", "RA20CL21NBEblups.csv", "RAWL20Bblups.csv", "RAWL20NBblups.csv", "CLEM21Bblups.csv", "CLEM22Bblups.csv") #take names of files that have "blups.csv" in the name
+BLUPfiles #10 files
+
+# Loop through all BLUP files
+for (i in 1:length(BLUPfiles)){ #1-10
+  data <- read.csv(BLUPfiles[i]) #read each file form 1 -10
+  head(data)
+  # Ensure the data has enough columns before renaming
+  if (ncol(data) >= 2) {  # At least 2 columns needed (GENO + at least 1 trait)
+    colnames(data)[2:ncol(data)] <- paste0(BLUPfiles[i], "_", colnames(data)[2:ncol(data)])
+  } else {
+    print(paste("Skipping", BLUPfiles[i], "because it has insufficient columns"))
+    next  # Skip files with too few columns
+  }
+  # Merge data into PSP3_BLUPs
+  PSP3_BLUPs <- merge(PSP3_BLUPs, data, by = "GENO", all = T)
+}
+#Check file
+head(PSP3_BLUPs)
+str(PSP3_BLUPs %>% filter(ID %in% acceList_0$ID)) #267
+PSP3_BLUPs <- PSP3_BLUPs %>% filter(ID %in% acceList_0$ID) %>% select(c(2:32))#267 accession and remove GENO column
+PSP3_BLUPs[1:2,]
+colnames(PSP3_BLUPs)
+#rename columns for shorter
+PSP3_BLUPs <- PSP3_BLUPs %>% rename("Taxa" = "ID",
+                                    "PSP3B.blups.Protein.NMC" = "PSP3Bblups.csv_Protein_unadjusted",
+                                    "PSP3B.blups.SAA.NMC" = "PSP3Bblups.csv_SAA_unadjusted",
+                                    "PSP3B.blups.T_Starch.NMC" = "PSP3Bblups.csv_Total_Starch_unadjusted",
+                                    "PSP3B.blups.R_Starch.NMC" = "PSP3Bblups.csv_Resistance_Starch_unadjusted",
+                                    "PSP3B.blups.Protein.MC" = "PSP3Bblups.csv_Protein_15per_DB_Moisture",
+                                    "PSP3B.blups.SAA.MC" = "PSP3Bblups.csv_SAA_15per_DB_Moisture",
+                                    "PSP3B.blups.T_Starch.MC" = "PSP3Bblups.csv_Total_Starch_15per_DB_Moisture",
+                                    "PSP3B.blups.R_Starch.MC" = "PSP3Bblups.csv_Resistance_Starch_15per_DB_Moisture",
+                                    "PSP3NB.blups.Moisture" = "PSP3NBblups.csv_Moisture_per",
+                                    "PSP3NBE.blups.PDg" = "PSP3NBEblups.csv_Protein_digestibility_per",
+                                    "RA20CL21B.blups.Protein.NMC" = "RA20CL21Bblups.csv_Protein_unadjusted",
+                                    "RA20CL21B.blups.SAA.NMC" = "RA20CL21Bblups.csv_SAA_unadjusted",
+                                    "RA20CL21B.blups.Protein.MC" = "RA20CL21Bblups.csv_Protein_15per_DB_Moisture",
+                                    "RA20CL21B.blups.SAA.MC" = "RA20CL21Bblups.csv_SAA_15per_DB_Moisture",
+                                    "RA20CL21B.blups.T_Starch.MC" = "RA20CL21Bblups.csv_Total_Starch_15per_DB_Moisture",
+                                    "RA20CL21NB.blups.Moisture" = "RA20CL21NBblups.csv_Moisture_per",
+                                    "RA20CL21NBE.blups.T_Starch.NMC" = "RA20CL21NBEblups.csv_Total_Starch_unadjusted",
+                                    "RAWL20B.blups.Moisture" = "RAWL20Bblups.csv_Moisture_per",
+                                    "RAWL20B.blups.Protein.NMC" = "RAWL20Bblups.csv_Protein_unadjusted",
+                                    "RAWL20B.blups.SAA.NMC" = "RAWL20Bblups.csv_SAA_unadjusted",
+                                    "RAWL20B.blups.Protein.MC" = "RAWL20Bblups.csv_Protein_15per_DB_Moisture",
+                                    "RAWL20B.blups.SAA.MC" = "RAWL20Bblups.csv_SAA_15per_DB_Moisture",
+                                    "RAWL20B.blups.T_Starch.MC" = "RAWL20Bblups.csv_Total_Starch_15per_DB_Moisture",
+                                    "RAWL20B.blups.PDg" = "RAWL20Bblups.csv_Protein_digestibility_per",
+                                    "RAWL20NB.blups.T_Starch.NMC" = "RAWL20NBblups.csv_Total_Starch_unadjusted",
+                                    "CLEM21B.blups.T_Starch.NMC" = "CLEM21Bblups.csv_Total_Starch_unadjusted",
+                                    "CLEM21B.blups.R_Starch.NMC" = "CLEM21Bblups.csv_Resistance_Starch_unadjusted",
+                                    "CLEM21B.blups.T_Starch.MC" = "CLEM21Bblups.csv_Total_Starch_15per_DB_Moisture",
+                                    "CLEM21B.blups.R_Starch.MC" = "CLEM21Bblups.csv_Resistance_Starch_15per_DB_Moisture",
+                                    "CLEM22B.blups.Protein.NMC" = "CLEM22Bblups.csv_Protein_unadjusted") %>%
+                            select(c(1,10,17,19,2,6,12,14,20,22,31,3,7,13,15,21,23,4,8,18,16,26,24,27,29,5,9,28,30,11,25)) #order columns by trait 
+PSP3_BLUPs[1:2,]
+colnames(PSP3_BLUPs)
+#save file
+write.csv(PSP3_BLUPs,"PSP3_BLUPs.csv", row.names=FALSE)
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+# CALCULATE BAYES bayesian random effect estimates
+
+lmer (lme4): If the model is singular (i.e., one or more variance components are estimated as zero or near zero), ranef(lmer_model) may return near-zero or exactly zero estimates for certain random effects. This reflects the fact that the model’s structure does not support estimating all variance components reliably.
+lmer: Shrinkage happens, but if a variance component is too small, it may be set to zero, completely removing some random effects.
+
+stan_lmer (rstanarm): Uses Bayesian inference, so even if the model is singular in frequentist terms, ranef(stan_lmer_model) will still return posterior distributions of random effects rather than just point estimates. This can provide uncertainty quantification and shrinkage effects that help mitigate singularity issues.
+stan_lmer: Uses Bayesian shrinkage, never setting variance exactly to zero, leading to more stable estimates in singular cases.
+
+# A Bayesian approach allows us to model all traits and enviroments.
+
+Since the Bayesian approach allows us to run our preferred models, let's go with Bayesian for everything to keep it consistent.
+
+Bayesian statistics require a lot of computation, so it is best to allow our analysis to run parallel to save time utilizing as many of our available computer cores as possible. We then run our models.
+
+- Bayes Arguments in stan_lmer
+    data = df
+        Specifies that the dataset df is being used.
+    adapt_delta = 0.99
+        Controls step size in Hamiltonian Monte Carlo (HMC) sampling.
+        Higher values (closer to 1) reduce the chance of divergence but slow down sampling.
+        If you get warnings about divergent transitions, increasing adapt_delta can help.
+    seed = 456
+        Ensures reproducibility of the Bayesian sampling process.
+    refresh = 0
+        Suppresses output progress messages during sampling (useful to reduce clutter in logs).
+
+
+______________________ Run estimation of bayesian REE in palmetto 
+sbatch estimate_bayesREE.sbatch
+squeue --me
+                      
+                      ______________________ estimate_bayesREE.sbatch
+                      #!/bin/bash
+                      
+                      #SBATCH --job-name estimate_bayesREE
+                      #SBATCH --nodes 1
+                      #SBATCH --tasks-per-node 1
+                      #SBATCH --cpus-per-task 16
+                      #SBATCH --mem 500gb
+                      #SBATCH --time 72:00:00
+                      #SBATCH --mail-type BEGIN
+                      #SBATCH --mail-type END
+                      #SBATCH --mail-type FAIL
+                      #SBATCH --output=estimate_bayesREE.out
+                      #SBATCH --error=estimate_bayesREE.err
+                      
+                      cd /project/dthavar/dilthavar/acballe/PSPPC_Phenotypes
+                      
+                      module load r/CUGBF-4.4.0
+                      Rscript estimate_bayesREE.R
+                      ______________________
+______________________ 
+
+ALL TRAITS WITH BLOCK
+
+```{r, echo=FALSE}
+
+print("#------------------------------------PSP3 all traits with block-----------------------------#")
+#options(mc.cores = parallel::detectCores())
+
+#WITH BLOCK
+df <- PSP3
+PSP3BbayesREE <- unique(df[,c(7),drop=F])
+trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+trait
+
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  stan_model <- stan_lmer(paste0(trait[i], " ~ (1|GENO) + (1|ENV/BLOCK)"), data=df, adapt_delta = 0.99, seed=456, refresh = 0)
+  random_effects <- ranef(stan_model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  PSP3BbayesREE <- merge(PSP3BbayesREE, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(VarCorr(stan_model))
+  #print(summary(stan_model))
+  print(VarCorr(stan_model), comp = "Variance")
+        
+        vc <- VarCorr(stan_model)
+        print(vc, comp = "Variance")
+        # Identify near-zero variances
+        variance_values <- as.numeric(vc)
+        if (any(variance_values < 1e-6)) {
+         print("Warning: Model may be singular (near-zero variance detected)")
+        } else {
+          print("Model appears non-singular")
+        }
+        print(kappa(model.matrix(stan_model))) #If κ > 30, collinearity is a concern.
+        print(eigen(vcov(stan_model))$values) #If some values are very small (< 1e-6), singularity is present.
+  #summary(stan_model)$summary[, c("n_eff", "Rhat")]
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+PSP3BbayesREE[1:2,]
+write_csv(PSP3BbayesREE,"PSP3BbayesREE.csv")
+
+print("#------------------------------------Heritabiity-----------------------------#")
+
+#WITH BLOCK
+df <- PSP3
+PSP3BbayesREE <- unique(df[,c(7),drop=F])
+trait <- colnames(df %>% select(c(9,15,16,17,18,19,20))) # all traits
+trait <- colnames(df %>% select(c(9)))
+trait
+
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  stan_model <- stan_lmer(paste0(trait[i], " ~ (1|GENO) + (1|ENV/BLOCK)"), data=df, adapt_delta = 0.99, seed=456, refresh = 0)
+  print(VarCorr(stan_model))
+  #print(summary(stan_model))
+  print(VarCorr(stan_model), comp = "Variance")
+        
+        vc <- VarCorr(stan_model)
+        print(vc, comp = "Variance")
+        # Identify near-zero variances
+        variance_values <- as.numeric(vc)
+        if (any(variance_values < 1e-6)) {
+         print("Warning: Model may be singular (near-zero variance detected)")
+        } else {
+          print("Model appears non-singular")
+        }
+        print(kappa(model.matrix(stan_model))) #If κ > 30, collinearity is a concern.
+        print(eigen(vcov(stan_model))$values) #If some values are very small (< 1e-6), singularity is present.
+  #summary(stan_model)$summary[, c("n_eff", "Rhat")]
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+
+
+```
+
+
+
+ALL TRAITS without BLOCK
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+print("#------------------------------------PSP3 all traits without block-----------------------------#")
+
+#WITHOUT BLOCK
+df <- PSP3
+PSP3NBbayesREE <- unique(df[,c(7),drop=F])
+trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  stan_model <- stan_lmer(paste0(trait[i], " ~ (1|GENO) + (1|ENV)"), data=df, adapt_delta = 0.99, seed=456, refresh = 0)
+  random_effects <- ranef(stan_model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  PSP3NBbayesREE <- merge(PSP3NBbayesREE, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(VarCorr(stan_model))
+  #print(summary(stan_model))
+  print(VarCorr(stan_model), comp = "Variance")
+        
+        vc <- VarCorr(stan_model)
+        print(vc, comp = "Variance")
+        # Identify near-zero variances
+        variance_values <- as.numeric(vc)
+        if (any(variance_values < 1e-6)) {
+         print("Warning: Model may be singular (near-zero variance detected)")
+        } else {
+          print("Model appears non-singular")
+        }
+        print(kappa(model.matrix(stan_model))) #If κ > 30, collinearity is a concern.
+        print(eigen(vcov(stan_model))$values) #If some values are very small (< 1e-6), singularity is present.
+  #summary(stan_model)$summary[, c("n_eff", "Rhat")]
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+PSP3NBbayesREE[1:2,]
+write_csv(PSP3NBbayesREE,"PSP3NBbayesREE.csv")
+
+```
+
+RA20CL21 with BLOCK
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+print("#------------------------------------RA20CL21 with block-----------------------------#")
+
+#WITH BLOCK
+df <- RA20CL21
+RA20CL21BbayesREE <- unique(df[,c(7),drop=F])
+trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  stan_model <- stan_lmer(paste0(trait[i], " ~ (1|GENO) + (1|ENV/BLOCK)"), data=df, adapt_delta = 0.99, seed=456, refresh = 0)
+  random_effects <- ranef(stan_model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  RA20CL21BbayesREE <- merge(RA20CL21BbayesREE, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(VarCorr(stan_model))
+  #print(summary(stan_model))
+  print(VarCorr(stan_model), comp = "Variance")
+        
+        vc <- VarCorr(stan_model)
+        print(vc, comp = "Variance")
+        # Identify near-zero variances
+        variance_values <- as.numeric(vc)
+        if (any(variance_values < 1e-6)) {
+         print("Warning: Model may be singular (near-zero variance detected)")
+        } else {
+          print("Model appears non-singular")
+        }
+        print(kappa(model.matrix(stan_model))) #If κ > 30, collinearity is a concern.
+        print(eigen(vcov(stan_model))$values) #If some values are very small (< 1e-6), singularity is present.
+  #summary(stan_model)$summary[, c("n_eff", "Rhat")]
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+RA20CL21BbayesREE[1:2,]
+write_csv(RA20CL21BbayesREE,"RA20CL21BbayesREE.csv")
+
+```
+
+RA20CL21 without BLOCK
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+print("#------------------------------------RA20CL21 with block-----------------------------#")
+
+#WITHOUT BLOCK
+df <- RA20CL21
+RA20CL21NBbayesREE <- unique(df[,c(7),drop=F])
+trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+trait
+
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  stan_model <- stan_lmer(paste0(trait[i], " ~ (1|GENO) + (1|ENV)"), data=df, adapt_delta = 0.99, seed=456, refresh = 0)
+  random_effects <- ranef(stan_model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  RA20CL21NBbayesREE <- merge(RA20CL21NBbayesREE, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(VarCorr(stan_model))
+  #print(summary(stan_model))
+  print(VarCorr(stan_model), comp = "Variance")
+        
+        vc <- VarCorr(stan_model)
+        print(vc, comp = "Variance")
+        # Identify near-zero variances
+        variance_values <- as.numeric(vc)
+        if (any(variance_values < 1e-6)) {
+         print("Warning: Model may be singular (near-zero variance detected)")
+        } else {
+          print("Model appears non-singular")
+        }
+        print(kappa(model.matrix(stan_model))) #If κ > 30, collinearity is a concern.
+        print(eigen(vcov(stan_model))$values) #If some values are very small (< 1e-6), singularity is present.
+  #summary(stan_model)$summary[, c("n_eff", "Rhat")]
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+RA20CL21NBbayesREE[1:2,]
+write_csv(RA20CL21NBbayesREE,"RA20CL21NBbayesREE.csv")
+
+```
+
+RAWL20 with BLOCK
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+print("#------------------------------------RAWL20 with block-----------------------------#")
+
+#WITH BLOCK
+df <- RAWL20
+RAWL20BbayesREE <- unique(df[,c(7),drop=F])
+trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+trait
+
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  stan_model <- stan_lmer(paste0(trait[i], " ~ (1|GENO) + (1|BLOCK)"), data=df, adapt_delta = 0.99, seed=456, refresh = 0)
+  random_effects <- ranef(stan_model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  RAWL20BbayesREE <- merge(RAWL20BbayesREE, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(VarCorr(stan_model))
+  #print(summary(stan_model))
+  print(VarCorr(stan_model), comp = "Variance")
+        
+        vc <- VarCorr(stan_model)
+        print(vc, comp = "Variance")
+        # Identify near-zero variances
+        variance_values <- as.numeric(vc)
+        if (any(variance_values < 1e-6)) {
+         print("Warning: Model may be singular (near-zero variance detected)")
+        } else {
+          print("Model appears non-singular")
+        }
+        print(kappa(model.matrix(stan_model))) #If κ > 30, collinearity is a concern.
+        print(eigen(vcov(stan_model))$values) #If some values are very small (< 1e-6), singularity is present.
+  #summary(stan_model)$summary[, c("n_eff", "Rhat")]
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+RAWL20BbayesREE[1:2,]
+write_csv(RAWL20BbayesREE,"RAWL20BbayesREE.csv")
+
+```
+
+RAWL20 without BLOCK
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+print("#------------------------------------RAWL20 without block-----------------------------#")
+
+#WITHOUT BLOCK
+df <- RAWL20
+RAWL20NBbayesREE <- unique(df[,c(7),drop=F])
+trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+trait
+
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  stan_model <- stan_lmer(paste0(trait[i], " ~ (1|GENO)"), data=df, adapt_delta = 0.99, seed=456, refresh = 0)
+  random_effects <- ranef(stan_model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  RAWL20NBbayesREE <- merge(RAWL20NBbayesREE, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(VarCorr(stan_model))
+  #print(summary(stan_model))
+  print(VarCorr(stan_model), comp = "Variance")
+        
+        vc <- VarCorr(stan_model)
+        print(vc, comp = "Variance")
+        # Identify near-zero variances
+        variance_values <- as.numeric(vc)
+        if (any(variance_values < 1e-6)) {
+         print("Warning: Model may be singular (near-zero variance detected)")
+        } else {
+          print("Model appears non-singular")
+        }
+        print(kappa(model.matrix(stan_model))) #If κ > 30, collinearity is a concern.
+        print(eigen(vcov(stan_model))$values) #If some values are very small (< 1e-6), singularity is present.
+  #summary(stan_model)$summary[, c("n_eff", "Rhat")]
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+RAWL20NBbayesREE[1:2,]
+write_csv(RAWL20NBbayesREE,"RAWL20NBbayesREE.csv")
+
+```
+
+CLEM21 with BLOCK
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+print("#------------------------------------CLEM21 with block-----------------------------#")
+
+#WITH BLOCK
+df <- CLEM21
+CLEM21BbayesREE <- unique(df[,c(7),drop=F])
+trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+trait
+
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  stan_model <- stan_lmer(paste0(trait[i], " ~ (1|GENO) + (1|BLOCK)"), data=df, adapt_delta = 0.99, seed=456, refresh = 0)
+  random_effects <- ranef(stan_model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  CLEM21BbayesREE <- merge(CLEM21BbayesREE, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(VarCorr(stan_model))
+  #print(summary(stan_model))
+  print(VarCorr(stan_model), comp = "Variance")
+        
+        vc <- VarCorr(stan_model)
+        print(vc, comp = "Variance")
+        # Identify near-zero variances
+        variance_values <- as.numeric(vc)
+        if (any(variance_values < 1e-6)) {
+         print("Warning: Model may be singular (near-zero variance detected)")
+        } else {
+          print("Model appears non-singular")
+        }
+        print(kappa(model.matrix(stan_model))) #If κ > 30, collinearity is a concern.
+        print(eigen(vcov(stan_model))$values) #If some values are very small (< 1e-6), singularity is present.
+  #summary(stan_model)$summary[, c("n_eff", "Rhat")]
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+CLEM21BbayesREE[1:2,]
+write_csv(CLEM21BbayesREE,"CLEM21BbayesREE.csv")
+
+```
+
+CLEM21 without BLOCK
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+print("#------------------------------------CLEM21 without block-----------------------------#")
+
+#WITHOUT BLOCK
+df <- CLEM21
+CLEM21NBbayesREE <- unique(df[,c(7),drop=F])
+trait <- colnames(df %>% select(c(9,10,11,12,13,14,15,16,17,18,19,20))) # all traits
+trait
+
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  stan_model <- stan_lmer(paste0(trait[i], " ~ (1|GENO)"), data=df, adapt_delta = 0.99, seed=456, refresh = 0)
+  random_effects <- ranef(stan_model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  CLEM21NBbayesREE <- merge(CLEM21NBbayesREE, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(VarCorr(stan_model))
+  #print(summary(stan_model))
+  print(VarCorr(stan_model), comp = "Variance")
+        
+        vc <- VarCorr(stan_model)
+        print(vc, comp = "Variance")
+        # Identify near-zero variances
+        variance_values <- as.numeric(vc)
+        if (any(variance_values < 1e-6)) {
+         print("Warning: Model may be singular (near-zero variance detected)")
+        } else {
+          print("Model appears non-singular")
+        }
+        print(kappa(model.matrix(stan_model))) #If κ > 30, collinearity is a concern.
+        print(eigen(vcov(stan_model))$values) #If some values are very small (< 1e-6), singularity is present.
+  #summary(stan_model)$summary[, c("n_eff", "Rhat")]
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+CLEM21NBbayesREE[1:2,]
+write_csv(CLEM21NBbayesREE,"CLEM21NBbayesREE.csv")
+
+```
+
+CLEM22 with BLOCK
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+print("#------------------------------------CLEM22 with block-----------------------------#")
+
+#WITH BLOCK
+df <- CLEM22
+CLEM22BbayesREE <- unique(df[,c(7),drop=F])
+trait <- colnames(df %>% select(c(9,10,12,13,14,15,17,18,19,20))) # all traits, except SAA_unadjusted and SAA_15per_DB_Moisture as traits, since no data for CLEM22.
+trait 
+
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  stan_model <- stan_lmer(paste0(trait[i], " ~ (1|GENO) + (1|BLOCK)"), data=df, adapt_delta = 0.99, seed=456, refresh = 0)
+  random_effects <- ranef(stan_model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  CLEM22BbayesREE <- merge(CLEM22BbayesREE, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(VarCorr(stan_model))
+  #print(summary(stan_model))
+  print(VarCorr(stan_model), comp = "Variance")
+        
+        vc <- VarCorr(stan_model)
+        print(vc, comp = "Variance")
+        # Identify near-zero variances
+        variance_values <- as.numeric(vc)
+        if (any(variance_values < 1e-6)) {
+         print("Warning: Model may be singular (near-zero variance detected)")
+        } else {
+          print("Model appears non-singular")
+        }
+        print(kappa(model.matrix(stan_model))) #If κ > 30, collinearity is a concern.
+        print(eigen(vcov(stan_model))$values) #If some values are very small (< 1e-6), singularity is present.
+  #summary(stan_model)$summary[, c("n_eff", "Rhat")]
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+CLEM22BbayesREE[1:2,]
+write_csv(CLEM22BbayesREE,"CLEM22BbayesREE.csv")
+
+```
+
+CLEM22 without BLOCK
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+print("#------------------------------------CLEM22 without block-----------------------------#")
+
+#WITHOUT BLOCK
+df <- CLEM22
+CLEM22NBbayesREE <- unique(df[,c(7),drop=F])
+trait <- colnames(df %>% select(c(9,10,12,13,14,15,17,18,19,20))) # all traits, except SAA_unadjusted and SAA_15per_DB_Moisture as traits, since no data for CLEM22.
+trait
+
+for (i in 1:length(trait)){
+  print(paste("### Processing trait:", trait[i], "###"))
+  stan_model <- stan_lmer(paste0(trait[i], " ~ (1|GENO)"), data=df, adapt_delta = 0.99, seed=456, refresh = 0)
+  random_effects <- ranef(stan_model)$GENO
+  random_effects$GENO <- rownames(random_effects)
+  colnames(random_effects) <- c(trait[i], "GENO")
+  CLEM22NBbayesREE <- merge(CLEM22NBbayesREE, random_effects, all = T)
+  print(paste("Trait", i, trait[i], sep= " "))
+  print(VarCorr(stan_model))
+  #print(summary(stan_model))
+  print(VarCorr(stan_model), comp = "Variance")
+        
+        vc <- VarCorr(stan_model)
+        print(vc, comp = "Variance")
+        # Identify near-zero variances
+        variance_values <- as.numeric(vc)
+        if (any(variance_values < 1e-6)) {
+         print("Warning: Model may be singular (near-zero variance detected)")
+        } else {
+          print("Model appears non-singular")
+        }
+        print(kappa(model.matrix(stan_model))) #If κ > 30, collinearity is a concern.
+        print(eigen(vcov(stan_model))$values) #If some values are very small (< 1e-6), singularity is present.
+  #summary(stan_model)$summary[, c("n_eff", "Rhat")]
+  print(paste("### Finish trait:", trait[i], "###"))
+  print("")
+}
+CLEM22NBbayesREE[1:2,]
+write_csv(CLEM22NBbayesREE,"CLEM22NBbayesREE.csv")
+
+```
+
+```{r, echo=TRUE}
+###############################################################################################################
+```
+
+Now let's merge all of bayesian random effect estimates into two dataframs. 
+We'll read the data from CSV, since reproducing the results from the original data takes a long time.
+
+
+Colnames notation
+
+- envModel.BayesianRandomEffectEstimates.trait.MoistureCorrection
+
+PSP3B.bayes.Protein.NMC --> PSP3 means all dataset used (options: PSP3, RA20CL21, RAWL20, CLEM21, CLEM22)
+                            B model included Block (options: B model included block, and NB model did not included block)
+                            bayes indicates the value is a Bayesian random effect estimate
+                            Protein is the trait (options: Moisture, Protein, SAA, Fiber, T_starch= total start, R_starch = resistance starch, PDg)
+                            NMC means No Moisture corrected (options: NMC for moisture corrected and MC for moisture corrected)
+
+```{r paged.print=FALSE}
+
+################
+################ Put all files together
+
+df <- PSP3
+head(df)
+PSP3_BAYESREE <- unique(df[,c(7,8),drop=F])
+PSP3_BAYESREE
+head(PSP3_BAYESREE)
+
+BAYESfiles <- list.files(pattern = "bayesREE.csv") #take names of files that have "bayesREE.csv" in the name
+BAYESfiles
+BAYESfiles <- c("PSP3BbayesREE.csv", "PSP3NBbayesREE.csv", "RA20CL21BbayesREE.csv", "RA20CL21NBbayesREE.csv", "RAWL20BbayesREE.csv", "RAWL20NBbayesREE.csv", "CLEM21BbayesREE.csv", "CLEM21NBbayesREE.csv", "CLEM22BbayesREE.csv", "CLEM22NBbayesREE.csv") #take names of files that have "blups.csv" in the name
+BAYESfiles #10 files
+
+# Loop through all BLUP files
+for (i in 1:length(BAYESfiles)){ #1-10
+  data <- read.csv(BAYESfiles[i]) #read each file form 1 -10
+  head(data)
+  # Ensure the data has enough columns before renaming
+  if (ncol(data) >= 2) {  # At least 2 columns needed (GENO + at least 1 trait)
+    colnames(data)[2:ncol(data)] <- paste0(BAYESfiles[i], "_", colnames(data)[2:ncol(data)])
+  } else {
+    print(paste("Skipping", BAYESfiles[i], "because it has insufficient columns"))
+    next  # Skip files with too few columns
+  }
+  # Merge data into PSP3_BAYESREE
+  PSP3_BAYESREE <- merge(PSP3_BAYESREE, data, by = "GENO", all = T)
+}
+#Check file
+PSP3_BAYESREE[1:2,]
+
+          ##############################
+          #save file to share all 299 genotypes
+          PSP3_BAYESREE_299 <- PSP3_BAYESREE
+          PSP3_BAYESREE_299 <- PSP3_BAYESREE_299 %>% rename("Taxa" = "ID",
+                                                    "PSP3B.bayes.Moisture" = "PSP3BbayesREE.csv_Moisture_per",
+                                                    "PSP3B.bayes.Protein.NMC" = "PSP3BbayesREE.csv_Protein_unadjusted",
+                                                    "PSP3B.bayes.SAA.NMC" = "PSP3BbayesREE.csv_SAA_unadjusted",
+                                                    "PSP3B.bayes.Fiber.NMC" = "PSP3BbayesREE.csv_Dietary_Fiber_unadjusted",
+                                                    "PSP3B.bayes.T_starch.NMC" = "PSP3BbayesREE.csv_Total_Starch_unadjusted",
+                                                    "PSP3B.bayes.R_starch.NMC" = "PSP3BbayesREE.csv_Resistance_Starch_unadjusted",
+                                                    "PSP3B.bayes.Protein.MC" = "PSP3BbayesREE.csv_Protein_15per_DB_Moisture",
+                                                    "PSP3B.bayes.SAA.MC" = "PSP3BbayesREE.csv_SAA_15per_DB_Moisture",
+                                                    "PSP3B.bayes.Fiber.MC" = "PSP3BbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                                    "PSP3B.bayes.T_starch.MC" = "PSP3BbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                                    "PSP3B.bayes.R_starch.MC" = "PSP3BbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                                    "PSP3B.bayes.PDg" = "PSP3BbayesREE.csv_Protein_digestibility_per",
+                                                    "PSP3NB.bayes.Moisture" = "PSP3NBbayesREE.csv_Moisture_per",
+                                                    "PSP3NB.bayes.Protein.NMC" = "PSP3NBbayesREE.csv_Protein_unadjusted",
+                                                    "PSP3NB.bayes.SAA.NMC" = "PSP3NBbayesREE.csv_SAA_unadjusted",
+                                                    "PSP3NB.bayes.Fiber.NMC" = "PSP3NBbayesREE.csv_Dietary_Fiber_unadjusted",
+                                                    "PSP3NB.bayes.T_starch.NMC" = "PSP3NBbayesREE.csv_Total_Starch_unadjusted",
+                                                    "PSP3NB.bayes.R_starch.NMC" = "PSP3NBbayesREE.csv_Resistance_Starch_unadjusted",
+                                                    "PSP3NB.bayes.Protein.MC" = "PSP3NBbayesREE.csv_Protein_15per_DB_Moisture",
+                                                    "PSP3NB.bayes.SAA.MC" = "PSP3NBbayesREE.csv_SAA_15per_DB_Moisture",
+                                                    "PSP3NB.bayes.Fiber.MC" = "PSP3NBbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                                    "PSP3NB.bayes.T_starch.MC" = "PSP3NBbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                                    "PSP3NB.bayes.R_starch.MC" = "PSP3NBbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                                    "PSP3NB.bayes.PDg" = "PSP3NBbayesREE.csv_Protein_digestibility_per",
+                                                    "RA20CL21B.bayes.Moisture" = "RA20CL21BbayesREE.csv_Moisture_per",
+                                                    "RA20CL21B.bayes.Protein.NMC" = "RA20CL21BbayesREE.csv_Protein_unadjusted",
+                                                    "RA20CL21B.bayes.SAA.NMC" = "RA20CL21BbayesREE.csv_SAA_unadjusted",
+                                                    "RA20CL21B.bayes.Fiber.NMC" = "RA20CL21BbayesREE.csv_Dietary_Fiber_unadjusted",
+                                                    "RA20CL21B.bayes.T_starch.NMC" = "RA20CL21BbayesREE.csv_Total_Starch_unadjusted",
+                                                    "RA20CL21B.bayes.R_starch.NMC" = "RA20CL21BbayesREE.csv_Resistance_Starch_unadjusted",
+                                                    "RA20CL21B.bayes.Protein.MC" = "RA20CL21BbayesREE.csv_Protein_15per_DB_Moisture",
+                                                    "RA20CL21B.bayes.SAA.MC" = "RA20CL21BbayesREE.csv_SAA_15per_DB_Moisture",
+                                                    "RA20CL21B.bayes.Fiber.MC" = "RA20CL21BbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                                    "RA20CL21B.bayes.T_starch.MC" = "RA20CL21BbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                                    "RA20CL21B.bayes.R_starch.MC" = "RA20CL21BbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                                    "RA20CL21B.bayes.PDg" = "RA20CL21BbayesREE.csv_Protein_digestibility_per",
+                                                    "RA20CL21NB.bayes.Moisture" = "RA20CL21NBbayesREE.csv_Moisture_per",
+                                                    "RA20CL21NB.bayes.Protein.NMC" = "RA20CL21NBbayesREE.csv_Protein_unadjusted",
+                                                    "RA20CL21NB.bayes.SAA.NMC" = "RA20CL21NBbayesREE.csv_SAA_unadjusted",
+                                                    "RA20CL21NB.bayes.Fiber.NMC" = "RA20CL21NBbayesREE.csv_Dietary_Fiber_unadjusted",
+                                                    "RA20CL21NB.bayes.T_starch.NMC" = "RA20CL21NBbayesREE.csv_Total_Starch_unadjusted",
+                                                    "RA20CL21NB.bayes.R_starch.NMC" = "RA20CL21NBbayesREE.csv_Resistance_Starch_unadjusted",
+                                                    "RA20CL21NB.bayes.Protein.MC" = "RA20CL21NBbayesREE.csv_Protein_15per_DB_Moisture",
+                                                    "RA20CL21NB.bayes.SAA.MC" = "RA20CL21NBbayesREE.csv_SAA_15per_DB_Moisture",
+                                                    "RA20CL21NB.bayes.Fiber.MC" = "RA20CL21NBbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                                    "RA20CL21NB.bayes.T_starch.MC" = "RA20CL21NBbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                                    "RA20CL21NB.bayes.R_starch.MC" = "RA20CL21NBbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                                    "RA20CL21NB.bayes.PDg" = "RA20CL21NBbayesREE.csv_Protein_digestibility_per",
+                                                    "RAWL20B.bayes.Moisture" = "RAWL20BbayesREE.csv_Moisture_per",
+                                                    "RAWL20B.bayes.Protein.NMC" = "RAWL20BbayesREE.csv_Protein_unadjusted",
+                                                    "RAWL20B.bayes.SAA.NMC" = "RAWL20BbayesREE.csv_SAA_unadjusted",
+                                                    "RAWL20B.bayes.Fiber.NMC" = "RAWL20BbayesREE.csv_Dietary_Fiber_unadjusted",
+                                                    "RAWL20B.bayes.T_starch.NMC" = "RAWL20BbayesREE.csv_Total_Starch_unadjusted",
+                                                    "RAWL20B.bayes.R_starch.NMC" = "RAWL20BbayesREE.csv_Resistance_Starch_unadjusted",
+                                                    "RAWL20B.bayes.Protein.MC" = "RAWL20BbayesREE.csv_Protein_15per_DB_Moisture",
+                                                    "RAWL20B.bayes.SAA.MC" = "RAWL20BbayesREE.csv_SAA_15per_DB_Moisture",
+                                                    "RAWL20B.bayes.Fiber.MC" = "RAWL20BbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                                    "RAWL20B.bayes.T_starch.MC" = "RAWL20BbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                                    "RAWL20B.bayes.R_starch.MC" = "RAWL20BbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                                    "RAWL20B.bayes.PDg" = "RAWL20BbayesREE.csv_Protein_digestibility_per",
+                                                    "RAWL20NB.bayes.Moisture" = "RAWL20NBbayesREE.csv_Moisture_per",
+                                                    "RAWL20NB.bayes.Protein.NMC" = "RAWL20NBbayesREE.csv_Protein_unadjusted",
+                                                    "RAWL20NB.bayes.SAA.NMC" = "RAWL20NBbayesREE.csv_SAA_unadjusted",
+                                                    "RAWL20NB.bayes.Fiber.NMC" = "RAWL20NBbayesREE.csv_Dietary_Fiber_unadjusted",
+                                                    "RAWL20NB.bayes.T_starch.NMC" = "RAWL20NBbayesREE.csv_Total_Starch_unadjusted",
+                                                    "RAWL20NB.bayes.R_starch.NMC" = "RAWL20NBbayesREE.csv_Resistance_Starch_unadjusted",
+                                                    "RAWL20NB.bayes.Protein.MC" = "RAWL20NBbayesREE.csv_Protein_15per_DB_Moisture",
+                                                    "RAWL20NB.bayes.SAA.MC" = "RAWL20NBbayesREE.csv_SAA_15per_DB_Moisture",
+                                                    "RAWL20NB.bayes.Fiber.MC" = "RAWL20NBbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                                    "RAWL20NB.bayes.T_starch.MC" = "RAWL20NBbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                                    "RAWL20NB.bayes.R_starch.MC" = "RAWL20NBbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                                    "RAWL20NB.bayes.PDg" = "RAWL20NBbayesREE.csv_Protein_digestibility_per",
+                                                    "CLEM21B.bayes.Moisture" = "CLEM21BbayesREE.csv_Moisture_per",
+                                                    "CLEM21B.bayes.Protein.NMC" = "CLEM21BbayesREE.csv_Protein_unadjusted",
+                                                    "CLEM21B.bayes.SAA.NMC" = "CLEM21BbayesREE.csv_SAA_unadjusted",
+                                                    "CLEM21B.bayes.Fiber.NMC" = "CLEM21BbayesREE.csv_Dietary_Fiber_unadjusted",
+                                                    "CLEM21B.bayes.T_starch.NMC" = "CLEM21BbayesREE.csv_Total_Starch_unadjusted",
+                                                    "CLEM21B.bayes.R_starch.NMC" = "CLEM21BbayesREE.csv_Resistance_Starch_unadjusted",
+                                                    "CLEM21B.bayes.Protein.MC" = "CLEM21BbayesREE.csv_Protein_15per_DB_Moisture",
+                                                    "CLEM21B.bayes.SAA.MC" = "CLEM21BbayesREE.csv_SAA_15per_DB_Moisture",
+                                                    "CLEM21B.bayes.Fiber.MC" = "CLEM21BbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                                    "CLEM21B.bayes.T_starch.MC" = "CLEM21BbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                                    "CLEM21B.bayes.R_starch.MC" = "CLEM21BbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                                    "CLEM21B.bayes.PDg" = "CLEM21BbayesREE.csv_Protein_digestibility_per",
+                                                    "CLEM21NB.bayes.Moisture" = "CLEM21NBbayesREE.csv_Moisture_per",
+                                                    "CLEM21NB.bayes.Protein.NMC" = "CLEM21NBbayesREE.csv_Protein_unadjusted",
+                                                    "CLEM21NB.bayes.SAA.NMC" = "CLEM21NBbayesREE.csv_SAA_unadjusted",
+                                                    "CLEM21NB.bayes.Fiber.NMC" = "CLEM21NBbayesREE.csv_Dietary_Fiber_unadjusted",
+                                                    "CLEM21NB.bayes.T_starch.NMC" = "CLEM21NBbayesREE.csv_Total_Starch_unadjusted",
+                                                    "CLEM21NB.bayes.R_starch.NMC" = "CLEM21NBbayesREE.csv_Resistance_Starch_unadjusted",
+                                                    "CLEM21NB.bayes.Protein.MC" = "CLEM21NBbayesREE.csv_Protein_15per_DB_Moisture",
+                                                    "CLEM21NB.bayes.SAA.MC" = "CLEM21NBbayesREE.csv_SAA_15per_DB_Moisture",
+                                                    "CLEM21NB.bayes.Fiber.MC" = "CLEM21NBbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                                    "CLEM21NB.bayes.T_starch.MC" = "CLEM21NBbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                                    "CLEM21NB.bayes.R_starch.MC" = "CLEM21NBbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                                    "CLEM21NB.bayes.PDg" = "CLEM21NBbayesREE.csv_Protein_digestibility_per",
+                                                    "CLEM22B.bayes.Moisture" = "CLEM22BbayesREE.csv_Moisture_per",
+                                                    "CLEM22B.bayes.Protein.NMC" = "CLEM22BbayesREE.csv_Protein_unadjusted",
+                                                    "CLEM22B.bayes.Fiber.NMC" = "CLEM22BbayesREE.csv_Dietary_Fiber_unadjusted",
+                                                    "CLEM22B.bayes.T_starch.NMC" = "CLEM22BbayesREE.csv_Total_Starch_unadjusted",
+                                                    "CLEM22B.bayes.R_starch.NMC" = "CLEM22BbayesREE.csv_Resistance_Starch_unadjusted",
+                                                    "CLEM22B.bayes.Protein.MC" = "CLEM22BbayesREE.csv_Protein_15per_DB_Moisture",
+                                                    "CLEM22B.bayes.Fiber.MC" = "CLEM22BbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                                    "CLEM22B.bayes.T_starch.MC" = "CLEM22BbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                                    "CLEM22B.bayes.R_starch.MC" = "CLEM22BbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                                    "CLEM22B.bayes.PDg" = "CLEM22BbayesREE.csv_Protein_digestibility_per",
+                                                    "CLEM22NB.bayes.Moisture" = "CLEM22NBbayesREE.csv_Moisture_per",
+                                                    "CLEM22NB.bayes.Protein.NMC" = "CLEM22NBbayesREE.csv_Protein_unadjusted",
+                                                    "CLEM22NB.bayes.Fiber.NMC" = "CLEM22NBbayesREE.csv_Dietary_Fiber_unadjusted",
+                                                    "CLEM22NB.bayes.T_starch.NMC" = "CLEM22NBbayesREE.csv_Total_Starch_unadjusted",
+                                                    "CLEM22NB.bayes.R_starch.NMC" = "CLEM22NBbayesREE.csv_Resistance_Starch_unadjusted",
+                                                    "CLEM22NB.bayes.Protein.MC" = "CLEM22NBbayesREE.csv_Protein_15per_DB_Moisture",
+                                                    "CLEM22NB.bayes.Fiber.MC" = "CLEM22NBbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                                    "CLEM22NB.bayes.T_starch.MC" = "CLEM22NBbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                                    "CLEM22NB.bayes.R_starch.MC" = "CLEM22NBbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                                    "CLEM22NB.bayes.PDg" = "CLEM22NBbayesREE.csv_Protein_digestibility_per") %>% 
+                                      select(c(1,2,3,15,27,39,51,63,75,87,99,109,4,16,28,40,52,64,76,88,100,110,9,21,33,45,57,69,81,93,104,114,5,17,29,41,53,
+                                               65,77,89,10,22,34,46,58,70,82,94,6,18,30,42,54,66,78,90,101,111,11,23,35,47,59,71,83,95,105,115,7,19,31,43,55,67,
+                                               79,91,102,112,12,24,36,48,60,72,84,96,106,116,8,20,32,44,56,68,80,92,103,113,13,25,37,49,61,73,85,97,107,117,14,26,38,50,62,74,86,98,108,118)) #order columns by trait 
+          PSP3_BAYESREE_299[1:2,]
+          colnames(PSP3_BAYESREE_299)
+          #save file
+          write.csv(PSP3_BAYESREE_299,"PSP3_BAYESREE_299.csv", row.names=FALSE)
+
+
+#select 267 genotypes and save
+str(PSP3_BAYESREE %>% filter(ID %in% acceList_0$ID)) #267
+PSP3_BAYESREE <- PSP3_BAYESREE %>% filter(ID %in% acceList_0$ID) %>% select(c(2:118))#267 accession and remove GENO column, #116 traits (12 traits x 4 years (all, 20+21, 20, 21) + 10 x 1 year (2202) x 2 models (with and without block))
+PSP3_BAYESREE[1:2,]
+colnames(PSP3_BAYESREE)
+#rename columns for shorter
+PSP3_BAYESREE <- PSP3_BAYESREE %>% rename("Taxa" = "ID",
+                                          "PSP3B.bayes.Moisture" = "PSP3BbayesREE.csv_Moisture_per",
+                                          "PSP3B.bayes.Protein.NMC" = "PSP3BbayesREE.csv_Protein_unadjusted",
+                                          "PSP3B.bayes.SAA.NMC" = "PSP3BbayesREE.csv_SAA_unadjusted",
+                                          "PSP3B.bayes.Fiber.NMC" = "PSP3BbayesREE.csv_Dietary_Fiber_unadjusted",
+                                          "PSP3B.bayes.T_starch.NMC" = "PSP3BbayesREE.csv_Total_Starch_unadjusted",
+                                          "PSP3B.bayes.R_starch.NMC" = "PSP3BbayesREE.csv_Resistance_Starch_unadjusted",
+                                          "PSP3B.bayes.Protein.MC" = "PSP3BbayesREE.csv_Protein_15per_DB_Moisture",
+                                          "PSP3B.bayes.SAA.MC" = "PSP3BbayesREE.csv_SAA_15per_DB_Moisture",
+                                          "PSP3B.bayes.Fiber.MC" = "PSP3BbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                          "PSP3B.bayes.T_starch.MC" = "PSP3BbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                          "PSP3B.bayes.R_starch.MC" = "PSP3BbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                          "PSP3B.bayes.PDg" = "PSP3BbayesREE.csv_Protein_digestibility_per",
+                                          "PSP3NB.bayes.Moisture" = "PSP3NBbayesREE.csv_Moisture_per",
+                                          "PSP3NB.bayes.Protein.NMC" = "PSP3NBbayesREE.csv_Protein_unadjusted",
+                                          "PSP3NB.bayes.SAA.NMC" = "PSP3NBbayesREE.csv_SAA_unadjusted",
+                                          "PSP3NB.bayes.Fiber.NMC" = "PSP3NBbayesREE.csv_Dietary_Fiber_unadjusted",
+                                          "PSP3NB.bayes.T_starch.NMC" = "PSP3NBbayesREE.csv_Total_Starch_unadjusted",
+                                          "PSP3NB.bayes.R_starch.NMC" = "PSP3NBbayesREE.csv_Resistance_Starch_unadjusted",
+                                          "PSP3NB.bayes.Protein.MC" = "PSP3NBbayesREE.csv_Protein_15per_DB_Moisture",
+                                          "PSP3NB.bayes.SAA.MC" = "PSP3NBbayesREE.csv_SAA_15per_DB_Moisture",
+                                          "PSP3NB.bayes.Fiber.MC" = "PSP3NBbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                          "PSP3NB.bayes.T_starch.MC" = "PSP3NBbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                          "PSP3NB.bayes.R_starch.MC" = "PSP3NBbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                          "PSP3NB.bayes.PDg" = "PSP3NBbayesREE.csv_Protein_digestibility_per",
+                                          "RA20CL21B.bayes.Moisture" = "RA20CL21BbayesREE.csv_Moisture_per",
+                                          "RA20CL21B.bayes.Protein.NMC" = "RA20CL21BbayesREE.csv_Protein_unadjusted",
+                                          "RA20CL21B.bayes.SAA.NMC" = "RA20CL21BbayesREE.csv_SAA_unadjusted",
+                                          "RA20CL21B.bayes.Fiber.NMC" = "RA20CL21BbayesREE.csv_Dietary_Fiber_unadjusted",
+                                          "RA20CL21B.bayes.T_starch.NMC" = "RA20CL21BbayesREE.csv_Total_Starch_unadjusted",
+                                          "RA20CL21B.bayes.R_starch.NMC" = "RA20CL21BbayesREE.csv_Resistance_Starch_unadjusted",
+                                          "RA20CL21B.bayes.Protein.MC" = "RA20CL21BbayesREE.csv_Protein_15per_DB_Moisture",
+                                          "RA20CL21B.bayes.SAA.MC" = "RA20CL21BbayesREE.csv_SAA_15per_DB_Moisture",
+                                          "RA20CL21B.bayes.Fiber.MC" = "RA20CL21BbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                          "RA20CL21B.bayes.T_starch.MC" = "RA20CL21BbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                          "RA20CL21B.bayes.R_starch.MC" = "RA20CL21BbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                          "RA20CL21B.bayes.PDg" = "RA20CL21BbayesREE.csv_Protein_digestibility_per",
+                                          "RA20CL21NB.bayes.Moisture" = "RA20CL21NBbayesREE.csv_Moisture_per",
+                                          "RA20CL21NB.bayes.Protein.NMC" = "RA20CL21NBbayesREE.csv_Protein_unadjusted",
+                                          "RA20CL21NB.bayes.SAA.NMC" = "RA20CL21NBbayesREE.csv_SAA_unadjusted",
+                                          "RA20CL21NB.bayes.Fiber.NMC" = "RA20CL21NBbayesREE.csv_Dietary_Fiber_unadjusted",
+                                          "RA20CL21NB.bayes.T_starch.NMC" = "RA20CL21NBbayesREE.csv_Total_Starch_unadjusted",
+                                          "RA20CL21NB.bayes.R_starch.NMC" = "RA20CL21NBbayesREE.csv_Resistance_Starch_unadjusted",
+                                          "RA20CL21NB.bayes.Protein.MC" = "RA20CL21NBbayesREE.csv_Protein_15per_DB_Moisture",
+                                          "RA20CL21NB.bayes.SAA.MC" = "RA20CL21NBbayesREE.csv_SAA_15per_DB_Moisture",
+                                          "RA20CL21NB.bayes.Fiber.MC" = "RA20CL21NBbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                          "RA20CL21NB.bayes.T_starch.MC" = "RA20CL21NBbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                          "RA20CL21NB.bayes.R_starch.MC" = "RA20CL21NBbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                          "RA20CL21NB.bayes.PDg" = "RA20CL21NBbayesREE.csv_Protein_digestibility_per",
+                                          "RAWL20B.bayes.Moisture" = "RAWL20BbayesREE.csv_Moisture_per",
+                                          "RAWL20B.bayes.Protein.NMC" = "RAWL20BbayesREE.csv_Protein_unadjusted",
+                                          "RAWL20B.bayes.SAA.NMC" = "RAWL20BbayesREE.csv_SAA_unadjusted",
+                                          "RAWL20B.bayes.Fiber.NMC" = "RAWL20BbayesREE.csv_Dietary_Fiber_unadjusted",
+                                          "RAWL20B.bayes.T_starch.NMC" = "RAWL20BbayesREE.csv_Total_Starch_unadjusted",
+                                          "RAWL20B.bayes.R_starch.NMC" = "RAWL20BbayesREE.csv_Resistance_Starch_unadjusted",
+                                          "RAWL20B.bayes.Protein.MC" = "RAWL20BbayesREE.csv_Protein_15per_DB_Moisture",
+                                          "RAWL20B.bayes.SAA.MC" = "RAWL20BbayesREE.csv_SAA_15per_DB_Moisture",
+                                          "RAWL20B.bayes.Fiber.MC" = "RAWL20BbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                          "RAWL20B.bayes.T_starch.MC" = "RAWL20BbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                          "RAWL20B.bayes.R_starch.MC" = "RAWL20BbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                          "RAWL20B.bayes.PDg" = "RAWL20BbayesREE.csv_Protein_digestibility_per",
+                                          "RAWL20NB.bayes.Moisture" = "RAWL20NBbayesREE.csv_Moisture_per",
+                                          "RAWL20NB.bayes.Protein.NMC" = "RAWL20NBbayesREE.csv_Protein_unadjusted",
+                                          "RAWL20NB.bayes.SAA.NMC" = "RAWL20NBbayesREE.csv_SAA_unadjusted",
+                                          "RAWL20NB.bayes.Fiber.NMC" = "RAWL20NBbayesREE.csv_Dietary_Fiber_unadjusted",
+                                          "RAWL20NB.bayes.T_starch.NMC" = "RAWL20NBbayesREE.csv_Total_Starch_unadjusted",
+                                          "RAWL20NB.bayes.R_starch.NMC" = "RAWL20NBbayesREE.csv_Resistance_Starch_unadjusted",
+                                          "RAWL20NB.bayes.Protein.MC" = "RAWL20NBbayesREE.csv_Protein_15per_DB_Moisture",
+                                          "RAWL20NB.bayes.SAA.MC" = "RAWL20NBbayesREE.csv_SAA_15per_DB_Moisture",
+                                          "RAWL20NB.bayes.Fiber.MC" = "RAWL20NBbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                          "RAWL20NB.bayes.T_starch.MC" = "RAWL20NBbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                          "RAWL20NB.bayes.R_starch.MC" = "RAWL20NBbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                          "RAWL20NB.bayes.PDg" = "RAWL20NBbayesREE.csv_Protein_digestibility_per",
+                                          "CLEM21B.bayes.Moisture" = "CLEM21BbayesREE.csv_Moisture_per",
+                                          "CLEM21B.bayes.Protein.NMC" = "CLEM21BbayesREE.csv_Protein_unadjusted",
+                                          "CLEM21B.bayes.SAA.NMC" = "CLEM21BbayesREE.csv_SAA_unadjusted",
+                                          "CLEM21B.bayes.Fiber.NMC" = "CLEM21BbayesREE.csv_Dietary_Fiber_unadjusted",
+                                          "CLEM21B.bayes.T_starch.NMC" = "CLEM21BbayesREE.csv_Total_Starch_unadjusted",
+                                          "CLEM21B.bayes.R_starch.NMC" = "CLEM21BbayesREE.csv_Resistance_Starch_unadjusted",
+                                          "CLEM21B.bayes.Protein.MC" = "CLEM21BbayesREE.csv_Protein_15per_DB_Moisture",
+                                          "CLEM21B.bayes.SAA.MC" = "CLEM21BbayesREE.csv_SAA_15per_DB_Moisture",
+                                          "CLEM21B.bayes.Fiber.MC" = "CLEM21BbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                          "CLEM21B.bayes.T_starch.MC" = "CLEM21BbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                          "CLEM21B.bayes.R_starch.MC" = "CLEM21BbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                          "CLEM21B.bayes.PDg" = "CLEM21BbayesREE.csv_Protein_digestibility_per",
+                                          "CLEM21NB.bayes.Moisture" = "CLEM21NBbayesREE.csv_Moisture_per",
+                                          "CLEM21NB.bayes.Protein.NMC" = "CLEM21NBbayesREE.csv_Protein_unadjusted",
+                                          "CLEM21NB.bayes.SAA.NMC" = "CLEM21NBbayesREE.csv_SAA_unadjusted",
+                                          "CLEM21NB.bayes.Fiber.NMC" = "CLEM21NBbayesREE.csv_Dietary_Fiber_unadjusted",
+                                          "CLEM21NB.bayes.T_starch.NMC" = "CLEM21NBbayesREE.csv_Total_Starch_unadjusted",
+                                          "CLEM21NB.bayes.R_starch.NMC" = "CLEM21NBbayesREE.csv_Resistance_Starch_unadjusted",
+                                          "CLEM21NB.bayes.Protein.MC" = "CLEM21NBbayesREE.csv_Protein_15per_DB_Moisture",
+                                          "CLEM21NB.bayes.SAA.MC" = "CLEM21NBbayesREE.csv_SAA_15per_DB_Moisture",
+                                          "CLEM21NB.bayes.Fiber.MC" = "CLEM21NBbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                          "CLEM21NB.bayes.T_starch.MC" = "CLEM21NBbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                          "CLEM21NB.bayes.R_starch.MC" = "CLEM21NBbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                          "CLEM21NB.bayes.PDg" = "CLEM21NBbayesREE.csv_Protein_digestibility_per",
+                                          "CLEM22B.bayes.Moisture" = "CLEM22BbayesREE.csv_Moisture_per",
+                                          "CLEM22B.bayes.Protein.NMC" = "CLEM22BbayesREE.csv_Protein_unadjusted",
+                                          "CLEM22B.bayes.Fiber.NMC" = "CLEM22BbayesREE.csv_Dietary_Fiber_unadjusted",
+                                          "CLEM22B.bayes.T_starch.NMC" = "CLEM22BbayesREE.csv_Total_Starch_unadjusted",
+                                          "CLEM22B.bayes.R_starch.NMC" = "CLEM22BbayesREE.csv_Resistance_Starch_unadjusted",
+                                          "CLEM22B.bayes.Protein.MC" = "CLEM22BbayesREE.csv_Protein_15per_DB_Moisture",
+                                          "CLEM22B.bayes.Fiber.MC" = "CLEM22BbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                          "CLEM22B.bayes.T_starch.MC" = "CLEM22BbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                          "CLEM22B.bayes.R_starch.MC" = "CLEM22BbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                          "CLEM22B.bayes.PDg" = "CLEM22BbayesREE.csv_Protein_digestibility_per",
+                                          "CLEM22NB.bayes.Moisture" = "CLEM22NBbayesREE.csv_Moisture_per",
+                                          "CLEM22NB.bayes.Protein.NMC" = "CLEM22NBbayesREE.csv_Protein_unadjusted",
+                                          "CLEM22NB.bayes.Fiber.NMC" = "CLEM22NBbayesREE.csv_Dietary_Fiber_unadjusted",
+                                          "CLEM22NB.bayes.T_starch.NMC" = "CLEM22NBbayesREE.csv_Total_Starch_unadjusted",
+                                          "CLEM22NB.bayes.R_starch.NMC" = "CLEM22NBbayesREE.csv_Resistance_Starch_unadjusted",
+                                          "CLEM22NB.bayes.Protein.MC" = "CLEM22NBbayesREE.csv_Protein_15per_DB_Moisture",
+                                          "CLEM22NB.bayes.Fiber.MC" = "CLEM22NBbayesREE.csv_Dietary_Fiber_15per_DB_Moisture",
+                                          "CLEM22NB.bayes.T_starch.MC" = "CLEM22NBbayesREE.csv_Total_Starch_15per_DB_Moisture",
+                                          "CLEM22NB.bayes.R_starch.MC" = "CLEM22NBbayesREE.csv_Resistance_Starch_15per_DB_Moisture",
+                                          "CLEM22NB.bayes.PDg" = "CLEM22NBbayesREE.csv_Protein_digestibility_per") %>% 
+                            select(c(1,2,14,26,38,50,62,74,86,98,108,3,15,27,39,51,63,75,87,99,109,8,20,32,44,56,68,80,
+                                     92,103,113,4,16,28,40,52,64,76,88,9,21,33,45,57,69,81,93,5,17,29,41,53,65,77,89,100,
+                                     110,10,22,34,46,58,70,82,94,104,114,6,18,30,42,54,66,78,90,101,111,11,23,35,47,59,71,
+                                     83,95,105,115,7,19,31,43,55,67,79,91,102,112,12,24,36,48,60,72,84,96,106,116,13,25,37,49,61,73,85,97,107,117)) #order columns by trait 
+PSP3_BAYESREE[1:2,]
+colnames(PSP3_BAYESREE)
+#save file
+write.csv(PSP3_BAYESREE,"PSP3_BAYESREE.csv", row.names=FALSE)
+
+```
+
+# comparing with bayesian REE nathan calculated and mine
+
+```{r, include=TRUE}
+
+################
+################ orignal pheno data
+
+PSP3_cbt <- read.csv("/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes/PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.csv", header = T) 
+PSP3_cbt[1:2,]
+PSP3_cbt <- PSP3_cbt %>% select (c(1:8,9,10,11,15,16,20)) 
+length(unique(PSP3_cbt$Plot_ID))
+PSP3_cbt %>% filter(Plot_ID == "PSP20CU1151")
+PSP3_cbt %>% filter(GENO == "102888")
+
+PSP3na_MC <- read.csv('/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/BLUPs_MoistureCorrected/PSP_20-22_Protein.csv')
+PSP3na_MC <- PSP3na_MC %>% rename("Plot_ID" = "Plot.ID", "Protein_MC" = "Protein", "SAA_MC" = "SAA", "DBMoisture_1" = "DBMoisture")
+PSP3na_MC[1:2,]
+length(unique(PSP3na_MC$Plot_ID))
+PSP3na_MC %>% filter(Plot_ID == "PSP20CU1151")
+PSP3na_MC %>% filter(GENO == "102888")
+
+PSP3na_NMC <- read.csv('/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/BLUPs_NotMoistureCorrected/PSP_20-22_Protein.csv')
+PSP3na_NMC <- PSP3na_NMC %>% rename("Plot_ID" = "Plot.ID", "Protein_NMC" = "Protein", "SAA_NMC" = "SAA")
+PSP3na_NMC[1:2,]
+length(unique(PSP3na_NMC$Plot_ID))
+PSP3na_NMC %>% filter(Plot_ID == "PSP20CU1151")
+PSP3na_NMC %>% filter(GENO == "102888")
+
+#pheno_compa1 <- Reduce(function(...) merge(..., fix.by=c('GENO', 'ENV','BLOCK', 'PLOT'), all.x=TRUE), list(PSP3_cbt, PSP3na)) #Put data together
+pheno_compa1 <- Reduce(function(...) merge(..., fix.by=c('GENO', 'Plot.ID'), all.x=TRUE), list(PSP3_cbt, PSP3na_MC, PSP3na_NMC)) #Put data together
+pheno_compa1[1:2,]
+pheno_compa1 %>% filter(Plot_ID == "PSP20CU1151")
+
+# # Remove rows with any missing values
+# pheno_compa1 <- pheno_compa[complete.cases(pheno_compa), ]
+# pheno_compa1
+
+dim(pheno_compa1 %>% select(c(9:20)))
+ggpairs(data=(pheno_compa1 %>% select(c(9:20))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)))
+ggpairs(data=(pheno_compa1 %>% select(matches("Protein") & !matches("diges"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)))
+ggpairs(data=(pheno_compa1 %>% select(matches("SAA"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)))
+ggpairs(data=(pheno_compa1 %>% select(matches("Moisture") & !matches("Protein") & !matches("SAA"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)))
+ggpairs(data=(pheno_compa1 %>% select(matches("Protein_digestibility_per") | matches("PDg"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)))
+
+order <- c('RAWL20', 'CLEM21', 'CLEM22') 
+ggpairs(data=(pheno_compa1 %>% select(c(1,9:20)) %>% select(matches("Protein") & !matches("diges") | matches("ENV"))), mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 3, na.rm=TRUE, method = "pearson", use="pairwise.complete.obs"))) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+
+ggpairs(data=(pheno_compa1 %>% select(c(1,9:20)) %>% select(matches("SAA") | matches("ENV"))), mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 3, na.rm=TRUE, method = "pearson", use="pairwise.complete.obs"))) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+
+ggpairs(data=(pheno_compa1 %>% select(c(1,9:20)) %>% select(matches("Moisture") & !matches("Protein") & !matches("SAA") | matches("ENV"))), mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 3, na.rm=TRUE, method = "pearson", use="pairwise.complete.obs"))) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+
+ggpairs(data=(pheno_compa1 %>% select(c(1,9:20)) %>% select(matches("Protein_digestibility_per") | matches("PDg") | matches("ENV"))), mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 3, na.rm=TRUE, method = "pearson", use="pairwise.complete.obs"))) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+
+################
+################ bayesian pheno data
+
+N_GWASReady <- read.csv("/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/GWASReady.csv", header = T) 
+dim(N_GWASReady)
+names(N_GWASReady)[2] <- "Taxa"
+N_GWASReady[1:2,]
+
+C_GWASReady <- read.csv("/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes/PSP3_BAYESREE_299.csv", header = T) 
+#C_GWASReady <- read.csv("/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes/PSP3_BAYESREE.csv", header = T) # to compare with Nathan's, only 267
+dim(C_GWASReady)
+C_GWASReady[1:2,]
+
+ggpairs(data=(C_GWASReady %>% select(matches("PSP3") & !matches(".NMC") & !matches("R_starch"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3))) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0), axis.text.x = element_text(angle = 90))
+#Save plot
+# Create and save the plot directly
+ggsave(
+  plot = ggpairs(data=(C_GWASReady %>% select(matches("PSP3") & !matches(".NMC") & !matches("R_starch"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)), upper = list(continuous = wrap("cor", size = 5, na.rm = TRUE, method = "pearson"))) + theme_bw() + theme(text = element_text(size = 15), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 90), axis.text.x = element_text(angle = 90)),
+  filename = "PSP3All_PhenoBayes_correlations.pdf",
+  path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes",
+  height = 17,
+  width = 16)
+
+ggpairs(data=(C_GWASReady %>% select(matches("Moisture"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3))) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+ggpairs(data=(C_GWASReady %>% select(matches("Protein.MC"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3))) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+ggpairs(data=(C_GWASReady %>% select(matches("SAA.MC"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3))) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+ggpairs(data=(C_GWASReady %>% select(matches("Fiber.MC"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3))) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+ggpairs(data=(C_GWASReady %>% select(matches("T_starch.MC"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3))) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+ggpairs(data=(C_GWASReady %>% select(matches("PDg"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3))) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+
+pheno_compa <- Reduce(function(...) merge(..., fix.by='Taxa', all.x=TRUE), list(C_GWASReady,N_GWASReady)) #Put data together
+pheno_compa[1:2,]
+
+dim(pheno_compa %>% select(matches("Protein") & matches("PSP3")))
+ggpairs(data=(pheno_compa %>% select(matches("Protein") & matches("PSP3"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3))) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+
+```
+
+# clustering analysis
+
+https://www.franklinsantosm.com/posts/conglomerados/
+https://rpkgs.datanovia.com/factoextra/
+
+```{r, include=TRUE}
+
+library(factoextra)
+library(useful)
+
+print("#----------------------------------------------------------------------------#")
+
+myY_bayes <- read.csv("/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes/PSP3_BAYESREE_299.csv", head = TRUE)
+myY_bayes <- as.data.frame(myY_bayes)
+str(myY_bayes)
+myY_bayes[1:2,]
+dim(myY_bayes)
+
+print("#------------------------------------normality----------------------------------------#")
+   
+head(myY_bayes)
+str(myY_bayes)
+
+shapiro.test(myY_bayes$PSP3B.bayes.Moisture) # p-value = 5.316e-06
+hist(myY_bayes$PSP3B.bayes.Moisture, breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
+qqnorm(myY_bayes$PSP3B.bayes.Moisture)
+qqline(myY_bayes$PSP3B.bayes.Moisture, col = "red")
+
+shapiro.test(myY_bayes$PSP3B.bayes.Protein.MC) # p-value = 0.0003156
+shapiro.test(myY_bayes$PSP3B.bayes.SAA.MC) # p-value = 0.0001605
+shapiro.test(myY_bayes$PSP3B.bayes.Fiber.MC) # p-value = 8.248e-12
+shapiro.test(myY_bayes$PSP3B.bayes.T_starch.MC) # p-value = 0.001059
+shapiro.test(myY_bayes$PSP3B.bayes.PDg) # p-value = 0.0001811
+
+
+myY_bayes <- myY_bayes %>% select(matches("GENO") | matches("PSP3B") & !matches(".NMC") & !matches("R_starch"))
+head(myY_bayes)
+# Data preparation: remove non-numeric columns and scale the data
+myY_bayes <- myY_bayes %>% column_to_rownames("GENO")
+head(myY_bayes)
+str(myY_bayes)
+any(is.na(myY_bayes)) # Are there any NAs?
+anyNA(myY_bayes)           # Check for NAs
+any(is.infinite(as.matrix(myY_bayes)))  # Check for Inf/-Inf
+myY_bayes <- myY_bayes[complete.cases(myY_bayes),] #remove rows with NAs
+anyNA(myY_bayes)# Check for NAs
+
+print("#----------------------------------------------------------------------------#")
+# Compute distance matrix and visualize
+distance <- get_dist(myY_bayes)
+fviz_dist(distance, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+
+print("#----------------------------------------------------------------------------#")
+# Perform PCA
+myY_bayes_PCA <- prcomp(myY_bayes, center = TRUE, scale. = TRUE)
+# Summary of PCA results
+summary(myY_bayes_PCA)
+# Scree plot showing explained variance by each component
+fviz_eig(myY_bayes_PCA)
+# Plot of individuals in the space of the first two principal components
+fviz_pca_ind(myY_bayes_PCA, geom.ind = "point", pointshape = 21, pointsize = 2, fill.ind = "blue", col.ind = "black", repel = TRUE)
+# Plot of variables in the space of the first two principal components
+fviz_pca_var(myY_bayes_PCA, col.var = "contrib", gradient.cols = c("blue", "yellow", "red"), repel = TRUE)
+# Biplot showing both individuals and variables
+fviz_pca_biplot(myY_bayes_PCA, repel = TRUE)
+fviz_pca_biplot(myY_bayes_PCA, col.var = "contrib", gradient.cols = c("blue", "yellow", "red"), repel = TRUE, label="var")
+
+print("#----------------------------------------------------------------------------#")
+#PCA biplot with subpopulation info
+sorted_df <- read.csv("/project/dthavar/dilthavar/njohns9/PSPProteinGWAS/RWork/figures/Admix_PCA_MapPies/all_admix.csv", header = T) #this is the admixture results
+colnames(sorted_df)[1] <- "Taxa"
+sorted_df <- sorted_df %>% select(c("Taxa", "group"))
+sorted_df[1:6,]
+
+myY_bayes267 <- read.csv("/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes/PSP3_BAYESREE.csv", head = TRUE)
+myY_bayes267 <- as.data.frame(myY_bayes267)
+str(myY_bayes267)
+myY_bayes267[1:2,]
+dim(myY_bayes267)
+
+# myY_bayes267_sub <- Reduce(function(...) merge(..., fix.by='Taxa', all.x=TRUE), list(sorted_df, myY_bayes267)) #Put data together
+# myY_bayes267_sub <- myY_bayes267_sub %>% !matches(".NMC") & !matches("R_starch")
+# myY_bayes267_sub <- myY_bayes267_sub[complete.cases(myY_bayes267_sub),] #remove rows with NAs
+# myY_bayes267_sub.pca <- prcomp(myY_bayes267_sub[, -(1:2)],  scale = TRUE) #remove taxa
+# fviz_pca_var(myY_bayes267_sub.pca, col.var = "contrib", gradient.cols = c("blue", "yellow", "red"), repel = TRUE)
+
+myY_bayes267_sub <- Reduce(function(...) merge(..., fix.by='Taxa', all.x=TRUE), list(sorted_df, myY_bayes267)) #Put data together
+myY_bayes267_sub <- myY_bayes267_sub %>% select(matches("Taxa") | matches("group") | matches("PSP3B") & !matches(".NMC") & !matches("R_starch"))
+head(myY_bayes267_sub)
+myY_bayes267_sub <- myY_bayes267_sub %>% column_to_rownames("Taxa")
+myY_bayes267_sub.pca <- prcomp(myY_bayes267_sub[, -(1)],  scale = TRUE) #remove taxa
+p3 <- fviz_pca_var(myY_bayes267_sub.pca, col.var = "contrib", gradient.cols = c("blue", "yellow", "red"), repel = TRUE)
+p3
+fviz_pca_biplot(myY_bayes267_sub.pca, col.var = "contrib", gradient.cols = c("blue", "yellow", "red"), repel = TRUE, label="var")
+fviz_pca_biplot(myY_bayes267_sub.pca, label="var", col.var = "blue", habillage=myY_bayes267_sub$group, addEllipses=FALSE, ellipse.level=0.95)
+# Biplot showing both individuals and variables
+PCA_biplot_SampleNames <- fviz_pca_biplot(myY_bayes267_sub.pca, repel = TRUE) #who individuals' name
+PCA_biplot_SampleNames
+
+myY_bayes267_sub$group <- as.factor(myY_bayes267_sub$group)
+p4 <- fviz_pca_biplot(myY_bayes267_sub.pca, 
+                repel = TRUE, 
+                label = "var",
+                col.var = "blue",
+                habillage = myY_bayes267_sub$group,
+                palette = c("#984ea3","#A6CEE3","#377eb8","#f781bf","#ffd92f","#e41a1c","#FF7F00","#6A3D9A","#a65628","#33A02C"),
+                geom.ind = "point",
+                pointshape = 19,
+                pointsize = 1)
+p4
+
+                
+# Combine into one figure
+PCA_biplot_bayes <- plot_grid(p3, p4, 
+                              nrow = 1, 
+                              labels = c("C", "D"), 
+                              scale = 0.95, 
+                              label_size = 22)
+PCA_biplot_bayes
+
+#Save plot
+ggsave(plot = PCA_biplot_bayes, file = paste("PCA_biplot_bayes.pdf", sep = ""), height = 8, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes") #note that ggsave will save the last plot you generated
+ggsave(plot = PCA_biplot_bayes, file = paste("PCA_biplot_bayes.png", sep = ""), height = 8, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes") #note that ggsave will save the last plot you generated
+ggsave(plot = PCA_biplot_SampleNames, file = paste("PCA_biplot_SampleNames.pdf", sep = ""), height = 16, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes") #note that ggsave will save the last plot you generated
+
+
+
+print("#----------------------------------------------------------------------------#")
+#perform clueterin analysis
+
+# Elbow method for WSS
+fviz_nbclust(myY_bayes, kmeans, method = "wss")
+# Silhouette method
+fviz_nbclust(myY_bayes, kmeans, method = "silhouette")
+
+set.seed(123)
+kmeans_resultados <- kmeans(myY_bayes, centers = 2)  # Replace 4 with the optimal number of clusters
+
+# Visualization of clusters
+fviz_cluster(kmeans_resultados, data = myY_bayes)
+
+myY_bayes_K1 <- kmeans(x=myY_bayes, centers=1)
+plot(myY_bayes_K1, data=myY_bayes)
+myY_bayes_K2 <- kmeans(x=myY_bayes, centers=2)
+plot(myY_bayes_K2, data=myY_bayes)
+myY_bayes_K3 <- kmeans(x=myY_bayes, centers=3)
+plot(myY_bayes_K3, data=myY_bayes)
+myY_bayes_K3 <- kmeans(x=myY_bayes, centers=4)
+plot(myY_bayes_K3, data=myY_bayes)
+
+print("#------------------------------------K-means clustering analysis----------------------------------------#")
+
+head(PSP3)
+dim(PSP3)
+PSP3_clean <- PSP3[complete.cases(PSP3),] #remove rows with NAs
+as.data.frame(PSP3_clean %>% group_by(GENO) %>% summarise(count = n()))
+length(unique(PSP3_clean$GENO)) #267
+
+PSP3_K <- PSP3_clean %>% select(c(7,9,15,16,17,19,20))
+# Data preparation: remove non-numeric columns and scale the data
+PSP3_K <- PSP3_K %>% column_to_rownames("GENO") %>% select(-1) 
+head(PSP3_K)
+summary(PSP3_K)
+any(is.na(PSP3_K)) # Are there any NAs?
+
+set.seed(278613)
+PSP3_K1 <- kmeans(x=PSP3_K, centers=1)
+plot(PSP3_K1, data=PSP3_K)
+PSP3_K2 <- kmeans(x=PSP3_K, centers=2)
+plot(PSP3_K2, data=PSP3_K)
+#plot(PSP3_K3, data=PSP3_clean, class="GENO")
+PSP3_K3 <- kmeans(x=PSP3_K, centers=3)
+library(useful)
+plot(PSP3_K3, data=PSP3_K)
+
+
+       
+```
+
+
+```{r, include=TRUE}
+sessionInfo <- sessionInfo()
+sessionInfo
+
+#clear environment
+rm(list = ls())
+
+```
