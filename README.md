@@ -1,36 +1,36 @@
-# Pea_Protein_GWAS_2025
+# Pea_Protein_GWAS_2025  
 
-Data and scripts used in Ballén-Taborda et al. 
+Data and scripts used in Ballén-Taborda et al.   
 
-"**Genome-wide association studies of nutritional traits in peas (*Pisum sativum* L.) for biofortification**"
+"**Genome-wide association studies of nutritional traits in peas (*Pisum sativum* L.) for biofortification**"  
 
-## Data files
+## Data files  
 
----> data
+---> data  
 
 ----------> PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.csv
-            Phenotypic data collected over three years
+            Phenotypic data collected over three years  
             
 ----------> PSPPC.filt.recode.vcf.zip  
-            Genotypic data as VCF format (zipped)
+            Genotypic data as VCF format (zipped)  
            
 ----------> PSP3_BAYESREE.csv
-            Bayesuan Blups for Phenotypic data
+            Bayesuan Blups for Phenotypic data  
            
-## Scripts
+## Scripts  
 
----> scripts
+---> scripts  
 
 ------------> GWAS_PSPPC_03162025.Rmd
-              R markdown that contains details and all the scripts used for GWAS analysis, processing of results and plots, and PLINK analysis
+              R markdown that contains details and all the scripts used for GWAS analysis, processing of results and plots, and PLINK analysis  
               
-------------> Phenotypes_PSPPC_03162025.Rmd
-              R markdown that contains details and all the scripts for:
-              - Phenotypic data processing 
-              - BAYES bayesian random effect estimates
-              - Correlations
-              - PCA biplot analysis
-              - Plots
+------------> Phenotypes_PSPPC_03162025.Rmd  
+              R markdown that contains details and all the scripts for:  
+              - Phenotypic data processing   
+              - BAYES bayesian random effect estimates  
+              - Correlations  
+              - PCA biplot analysis  
+              - Plots  
     
 ------------> PopStructure_Genetics_PSPPC_02202025.Rmd
               R markdown that contains details and all the scripts for:
