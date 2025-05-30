@@ -8,40 +8,40 @@ Data and scripts used in Ballén-Taborda et al.
 
 ---> **data** folder    
 
-----------> **PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.csv**  
-            • Phenotypic data collected over three years  
+**PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.csv**  
+*Phenotypic data collected over three years*  
             
-----------> **PSPPC.filt.recode.vcf.zip** 
-            • Genotypic data as VCF format (zipped)  
+**PSPPC.filt.recode.vcf.zip**   
+*Genotypic data as VCF format (zipped)*  
            
-----------> **PSP3_BAYESREE.csv**
-            • Bayesuan Blups for Phenotypic data  
+**PSP3_BAYESREE.csv**  
+*Bayesuan Blups for Phenotypic data*  
            
 ## Scripts  
 
 ---> **scripts** folder    
 
-------------> **GWAS_PSPPC_03162025.Rmd**  
-              • R markdown that contains details and all the scripts used for:  
-              - GWAS analysis using GAPID    
-              - Processing of GAPID results   
-              - PLINK analysis       
+**GWAS_PSPPC_03162025.Rmd**  
+*R markdown that contains details and all the scripts used for:*  
+- GWAS analysis using GAPID    
+- Processing of GAPID results   
+- PLINK analysis       
               
 ------------> **Phenotypes_PSPPC_03162025.Rmd**    
-              • R markdown that contains details and all the scripts used for:  
-              - Phenotypic data processing   
-              - BAYES bayesian random effect estimates  
-              - Correlations  
-              - PCA biplot analysis  
-              - Plots  
+*R markdown that contains details and all the scripts used for:*  
+- Phenotypic data processing   
+- BAYES bayesian random effect estimates  
+- Correlations  
+- PCA biplot analysis  
+- Plots  
     
 ------------> **PopStructure_Genetics_PSPPC_02202025.Rmd**  
-              • R markdown that contains details and all the scripts used for:  
-              - Processing of VCF file  
-              - Generate SNP density plot  
-              - PCA analysis  
-              - Admixture and population structure plots   
-              - Population diversity estimates (nucleotide diversity, Tajima's D and heterozygocity)   
+*R markdown that contains details and all the scripts used for:*  
+- Processing of VCF file  
+- Generate SNP density plot  
+- PCA analysis  
+- Admixture and population structure plots   
+- Population diversity estimates (nucleotide diversity, Tajima's D and heterozygocity)   
     
 
 
