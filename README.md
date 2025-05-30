@@ -32,8 +32,8 @@ Data and scripts used in Ballén-Taborda et al.
 - Processing of GAPID results   
 - PLINK analysis       
 
-**run_admixture.bash** and **sort_admixture.R**
-*Scripts used for running and sorting ADMIXTURE analysis  
+**run_admixture.bash** and **sort_admixture.R**  
+*Scripts used for running and sorting ADMIXTURE analysis*  
 
 **PopStructure_Genetics_PSPPC_02202025.Rmd**  
 *R markdown that contains details and all the scripts used for:*  
