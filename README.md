@@ -22,7 +22,10 @@ Data and scripts used in Ballén-Taborda et al.
 ---> **scripts** folder    
 
 ------------> **GWAS_PSPPC_03162025.Rmd**  
-              R markdown that contains details and all the scripts used for GWAS analysis, processing of results and plots, and PLINK analysis  
+              R markdown that contains details and all the scripts used for:  
+              - GWAS analysis using GAPID    
+              - Processing of GAPID results   
+              - PLINK analysis       
               
 ------------> **Phenotypes_PSPPC_03162025.Rmd**    
               R markdown that contains details and all the scripts for:  
