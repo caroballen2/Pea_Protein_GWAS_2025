@@ -1,6 +1,6 @@
 # Pea_Protein_GWAS_2025  
 
-This repository contains the data files and scripts used in the study by **Ballén-Taborda et al.**  
+This repository contains the data files and scripts used in the study by **Ballén-Taborda et al.**     ***Add year and link to paper***
 
 "**Genome-wide association studies of nutritional traits in peas (*Pisum sativum* L.) for biofortification**"  
 
