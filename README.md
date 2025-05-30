@@ -8,7 +8,7 @@ Data and scripts used in Ballén-Taborda et al.
 
 ---> **data** folder    
 
-----------> **PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.csv**
+----------> **PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.csv**  
             • Phenotypic data collected over three years  
             
 ----------> **PSPPC.filt.recode.vcf.zip** 
