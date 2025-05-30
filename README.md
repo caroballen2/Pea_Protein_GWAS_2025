@@ -33,7 +33,7 @@ Data and scripts used in Ballén-Taborda et al.
 - PLINK analysis       
 
 **run_admixture.bash** and **sort_admixture.R**  
-*Scripts used for running and sorting ADMIXTURE analysis*  
+*Scripts used for running ADMIXTURE analysis and sorting*  
 
 **PopStructure_Genetics_PSPPC_02202025.Rmd**  
 *R markdown that contains details and all the scripts used for:*  
