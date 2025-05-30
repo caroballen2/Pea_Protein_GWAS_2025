@@ -4,9 +4,7 @@ Data and scripts used in Ballén-Taborda et al.
 
 "**Genome-wide association studies of nutritional traits in peas (*Pisum sativum* L.) for biofortification**"  
 
-## Data files  
-
----> **data** folder    
+## Data  
 
 **PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.csv**  
 *Phenotypic data collected over three years*  
@@ -18,8 +16,6 @@ Data and scripts used in Ballén-Taborda et al.
 *Bayesuan Blups for Phenotypic data*  
            
 ## Scripts  
-
----> **scripts** folder    
 
 **GWAS_PSPPC_03162025.Rmd**  
 *R markdown that contains details and all the scripts used for:*  
