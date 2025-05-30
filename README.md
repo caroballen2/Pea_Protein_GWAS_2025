@@ -17,21 +17,25 @@ Data and scripts used in Ballén-Taborda et al.
            
 ## Scripts  
 
+**Phenotypes_PSPPC_03162025.Rmd**    
+*R markdown that contains details and all the scripts used for:*  
+- Phenotypic data processing
+- Heritability estimation
+- BAYES bayesian random effect estimates  
+- Correlations  
+- PCA biplot analysis  
+- Plots
+
 **GWAS_PSPPC_03162025.Rmd**  
 *R markdown that contains details and all the scripts used for:*  
 - GWAS analysis using GAPID    
 - Processing of GAPID results   
 - PLINK analysis       
-              
-------------> **Phenotypes_PSPPC_03162025.Rmd**    
-*R markdown that contains details and all the scripts used for:*  
-- Phenotypic data processing   
-- BAYES bayesian random effect estimates  
-- Correlations  
-- PCA biplot analysis  
-- Plots  
-    
-------------> **PopStructure_Genetics_PSPPC_02202025.Rmd**  
+
+**run_admixture.bash** and **sort_admixture.R**
+*Scripts used for running and sorting ADMIXTURE analysis  
+
+**PopStructure_Genetics_PSPPC_02202025.Rmd**  
 *R markdown that contains details and all the scripts used for:*  
 - Processing of VCF file  
 - Generate SNP density plot  
