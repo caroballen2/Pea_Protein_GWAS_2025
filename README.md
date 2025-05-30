@@ -6,7 +6,7 @@ Data and scripts used in Ballén-Taborda et al.
 
 ## Data files  
 
----> data  
+---> **data** folder    
 
 ----------> PSP_OREI 20-22_Rawl20-Clem21-Clem22_Protein_GWAS_03032025.csv
             Phenotypic data collected over three years  
@@ -19,12 +19,12 @@ Data and scripts used in Ballén-Taborda et al.
            
 ## Scripts  
 
----> scripts  
+---> **scripts** folder    
 
-------------> GWAS_PSPPC_03162025.Rmd
+------------> **GWAS_PSPPC_03162025.Rmd**  
               R markdown that contains details and all the scripts used for GWAS analysis, processing of results and plots, and PLINK analysis  
               
-------------> Phenotypes_PSPPC_03162025.Rmd  
+------------> **Phenotypes_PSPPC_03162025.Rmd**    
               R markdown that contains details and all the scripts for:  
               - Phenotypic data processing   
               - BAYES bayesian random effect estimates  
@@ -32,13 +32,13 @@ Data and scripts used in Ballén-Taborda et al.
               - PCA biplot analysis  
               - Plots  
     
-------------> PopStructure_Genetics_PSPPC_02202025.Rmd
-              R markdown that contains details and all the scripts for:
-              - Processing of VCF file 
-              - Generate SNP density plot
-              - PCA analysis 
-              - Admixture and population structure plots 
-              - Population diversity estimates (nucleotide diversity, Tajima's D and heterozygocity) 
+------------> **PopStructure_Genetics_PSPPC_02202025.Rmd**  
+              R markdown that contains details and all the scripts for:  
+              - Processing of VCF file  
+              - Generate SNP density plot  
+              - PCA analysis  
+              - Admixture and population structure plots   
+              - Population diversity estimates (nucleotide diversity, Tajima's D and heterozygocity)   
     
 
 
