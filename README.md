@@ -29,7 +29,8 @@ This repository contains the data files and scripts used in the study by **Ball√
 **GWAS_PSPPC_03162025.Rmd**  
 *R markdown that contains details and all the scripts used for:*  
 - GWAS analysis using GAPID    
-- Processing of GAPIT results   
+- Processing of GAPIT results
+- Fit linear models of significant SNPs
 - PLINK analysis       
 
 **run_admixture.bash** and **sort_admixture.R**  
