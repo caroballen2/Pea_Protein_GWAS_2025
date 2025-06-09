@@ -501,7 +501,7 @@ dim(PSP3_267)
 colnames(PSP3_267)[8]<-"Taxa"
 
 myY_pheno267_sub <- Reduce(function(...) merge(..., fix.by='Taxa', all.x=TRUE), list(sorted_df, PSP3_267)) #Put data together
-myY_pheno267_sub <- myY_pheno267_sub %>% select(matches("Taxa") | matches("group") | matches("per") & !matches("Resistance"))
+myY_pheno267_sub <- myY_pheno267_sub %>% select(matches("Taxa") | matches("group") | matches("per") & !matches("Resistance") & !matches("Moisture_per"))
 head(myY_pheno267_sub)
 myY_pheno267_sub <- myY_pheno267_sub[complete.cases(myY_pheno267_sub),] #remove rows with NAs
 myY_pheno267_sub.pca <- prcomp(myY_pheno267_sub[, -(1:2)],  scale = TRUE) #remove taxa
@@ -2084,7 +2084,7 @@ dim(myY_bayes267)
 # fviz_pca_var(myY_bayes267_sub.pca, col.var = "contrib", gradient.cols = c("blue", "yellow", "red"), repel = TRUE)
 
 myY_bayes267_sub <- Reduce(function(...) merge(..., fix.by='Taxa', all.x=TRUE), list(sorted_df, myY_bayes267)) #Put data together
-myY_bayes267_sub <- myY_bayes267_sub %>% select(matches("Taxa") | matches("group") | matches("PSP3B") & !matches(".NMC") & !matches("R_starch"))
+myY_bayes267_sub <- myY_bayes267_sub %>% select(matches("Taxa") | matches("group") | matches("PSP3B") & !matches(".NMC") & !matches("R_starch") & !matches("Moisture"))
 head(myY_bayes267_sub)
 myY_bayes267_sub <- myY_bayes267_sub %>% column_to_rownames("Taxa")
 myY_bayes267_sub.pca <- prcomp(myY_bayes267_sub[, -(1)],  scale = TRUE) #remove taxa
@@ -2093,7 +2093,7 @@ p3
 fviz_pca_biplot(myY_bayes267_sub.pca, col.var = "contrib", gradient.cols = c("blue", "yellow", "red"), repel = TRUE, label="var")
 fviz_pca_biplot(myY_bayes267_sub.pca, label="var", col.var = "blue", habillage=myY_bayes267_sub$group, addEllipses=FALSE, ellipse.level=0.95)
 # Biplot showing both individuals and variables
-PCA_biplot_SampleNames <- fviz_pca_biplot(myY_bayes267_sub.pca, repel = TRUE) #who individuals' name
+PCA_biplot_SampleNames <- fviz_pca_biplot(myY_bayes267_sub.pca, repel = TRUE, col.var = "blue") #who individuals' name
 PCA_biplot_SampleNames
 
 myY_bayes267_sub$group <- as.factor(myY_bayes267_sub$group)
