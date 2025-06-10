@@ -196,7 +196,7 @@ ggpairs(PSP3All, mapping = aes(color = factor(ENV, level = order), fill = factor
 
 #Correlations
 print('---------Correlations for unadjusted data---------')
-unadjusted <- PSP3 %>% dplyr::select(matches("ENV") | matches("Moisture_per") | matches("unadjusted") | matches("digestibility")) 
+unadjusted <- PSP3 %>% dplyr::select(matches("ENV") | !matches("Moisture_per") | matches("unadjusted") | matches("digestibility")) 
 unadjusted[1:2,]
 order <- c('RAWL20', 'CLEM21', 'CLEM22') 
 ggpairs(unadjusted, mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 3, na.rm=TRUE, method = "pearson")), columnLabels = c("Env", "Moisture (%)", "Protein", "SAA", "Fiber", "T. Starch", "Res. Starch", "PDg (%)")) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
@@ -231,16 +231,16 @@ print('---------Correlations for ALL data---------')
 
 ggpairs(data=(PSP3 %>% dplyr::select(9,15,16,17,18,20)), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)))
 
-PSP3All <- PSP3 %>% dplyr::select(1,9,15,16,17,18,20) 
+PSP3All <- PSP3 %>% dplyr::select(1,15,16,17,18,20) 
 PSP3All[1:2,]
 order <- c('RAWL20', 'CLEM21', 'CLEM22') 
-ggpairs(PSP3All, mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)), upper = list(continuous = wrap("cor", size = 5, na.rm=TRUE, method = "pearson")), columnLabels = c("Env", "Moisture (%)", "Protein (15%)", "SAA (15%)", "Fiber (15%)", "T. Starch (15%)", "PDg (%)")) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 20), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
-ggpairs(PSP3All, mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 5, na.rm=TRUE, method = "pearson")), columnLabels = c("Env", "Moisture (%)", "Protein (15% MC)", "SAA (15% MC)", "Fiber (15% MC)", "T. Starch (15% MC)", "PDg (%)")) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 20), strip.text.y = element_text(angle = 90), strip.text.x = element_text(angle = 0), axis.text.x = element_text(angle = 90))
+ggpairs(PSP3All, mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)), upper = list(continuous = wrap("cor", size = 5, na.rm=TRUE, method = "pearson")), columnLabels = c("Env", "Protein (15%)", "SAA (15%)", "Fiber (15%)", "T. Starch (15%)", "PDg (%)")) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 20), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0))
+ggpairs(PSP3All, mapping = aes(color = factor(ENV, level = order), fill = factor(ENV, level = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 5, na.rm=TRUE, method = "pearson")), columnLabels = c("Env", "Protein (15% MC)", "SAA (15% MC)", "Fiber (15% MC)", "T. Starch (15% MC)", "PDg (%)")) + scale_colour_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + scale_fill_manual(values=c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 20), strip.text.y = element_text(angle = 90), strip.text.x = element_text(angle = 0), axis.text.x = element_text(angle = 90))
 
 #Save plot
 # Create and save the plot directly
 ggsave(
-  plot = ggpairs(PSP3All, mapping = aes(color = factor(ENV, levels = order), fill = factor(ENV, levels = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 5, na.rm = TRUE, method = "pearson")), columnLabels = c("Env", "Moisture (%)", "Protein (15% MC)", "SAA (15% MC)", "Fiber (15% MC)", "T. Starch (15% MC)", "PDg")) +
+  plot = ggpairs(PSP3All, mapping = aes(color = factor(ENV, levels = order), fill = factor(ENV, levels = order), alpha = 0.5), upper = list(continuous = wrap("cor", size = 5, na.rm = TRUE, method = "pearson")), columnLabels = c("Env", "Protein (15% MC)", "SAA (15% MC)", "Fiber (15% MC)", "T. Starch (15% MC)", "PDg")) +
     scale_colour_manual(values = c('darkslategray4', '#A6CEE3', '#377eb8')) +
     scale_fill_manual(values = c('darkslategray4', '#A6CEE3', '#377eb8')) + theme_bw() + theme(text = element_text(size = 20), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 90), axis.text.x = element_text(angle = 90)),
   filename = "PSP3All_Pheno_correlations.pdf",
@@ -1972,11 +1972,11 @@ C_GWASReady <- read.csv("/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes/PSP
 dim(C_GWASReady)
 C_GWASReady[1:2,]
 
-ggpairs(data=(C_GWASReady %>% select(matches("PSP3") & !matches(".NMC") & !matches("R_starch"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3))) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0), axis.text.x = element_text(angle = 90))
+ggpairs(data=(C_GWASReady %>% select(matches("PSP3") & !matches(".NMC") & !matches("R_starch") & !matches("Moisture"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3))) + theme_bw() + theme(text = element_text(size = 10), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 0), axis.text.x = element_text(angle = 90))
 #Save plot
 # Create and save the plot directly
 ggsave(
-  plot = ggpairs(data=(C_GWASReady %>% select(matches("PSP3") & !matches(".NMC") & !matches("R_starch"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)), upper = list(continuous = wrap("cor", size = 5, na.rm = TRUE, method = "pearson"))) + theme_bw() + theme(text = element_text(size = 15), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 90), axis.text.x = element_text(angle = 90)),
+  plot = ggpairs(data=(C_GWASReady %>% select(matches("PSP3") & !matches(".NMC") & !matches("R_starch") & !matches("Moisture"))), lower = list(continuous = wrap("smooth", method = "lm", color = "gray60", size = 1, alpha = 0.3)), upper = list(continuous = wrap("cor", size = 5, na.rm = TRUE, method = "pearson"))) + theme_bw() + theme(text = element_text(size = 15), strip.text.y = element_text(angle = 0), strip.text.x = element_text(angle = 90), axis.text.x = element_text(angle = 90)),
   filename = "PSP3All_PhenoBayes_correlations.pdf",
   path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes",
   height = 17,
@@ -2030,7 +2030,6 @@ shapiro.test(myY_bayes$PSP3B.bayes.SAA.MC) # p-value = 0.0001605
 shapiro.test(myY_bayes$PSP3B.bayes.Fiber.MC) # p-value = 8.248e-12
 shapiro.test(myY_bayes$PSP3B.bayes.T_starch.MC) # p-value = 0.001059
 shapiro.test(myY_bayes$PSP3B.bayes.PDg) # p-value = 0.0001811
-
 
 myY_bayes <- myY_bayes %>% select(matches("GENO") | matches("PSP3B") & !matches(".NMC") & !matches("R_starch"))
 head(myY_bayes)
@@ -2108,7 +2107,6 @@ p4 <- fviz_pca_biplot(myY_bayes267_sub.pca,
                 pointsize = 1)
 p4
 
-                
 # Combine into one figure
 PCA_biplot_bayes <- plot_grid(p3, p4, 
                               nrow = 1, 
@@ -2121,7 +2119,6 @@ PCA_biplot_bayes
 ggsave(plot = PCA_biplot_bayes, file = paste("PCA_biplot_bayes.pdf", sep = ""), height = 8, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes") #note that ggsave will save the last plot you generated
 ggsave(plot = PCA_biplot_bayes, file = paste("PCA_biplot_bayes.png", sep = ""), height = 8, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes") #note that ggsave will save the last plot you generated
 ggsave(plot = PCA_biplot_SampleNames, file = paste("PCA_biplot_SampleNames.pdf", sep = ""), height = 16, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes") #note that ggsave will save the last plot you generated
-
 
 
 print("#----------------------------------------------------------------------------#")
