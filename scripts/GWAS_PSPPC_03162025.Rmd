@@ -1071,10 +1071,14 @@ threshold1=0.01/54315
 threshold1
 -log10(threshold1)
 
+SIG_SNP_list <- c("S2LG1_5715307", "S2LG1_292238595", "S3LG5_219840019", "S3LG5_434614474", "S4LG4_76004069", "S4LG4_299351672", "S4LG4_416335390", "S4LG4_432425908", "S5LG3_61677899", "S5LG3_65187310", "S5LG3_65228308", "S5LG3_68426550", "S5LG3_75020967", "S5LG3_75020977", "S5LG3_78533957", "S6LG2_102304910", "S7LG7_47365879")
+SIG_SNP_list
+
 #manhattan all chrs
-unique_sigsnps_summary <- unique_sigsnps_summary %>% filter(mean_MAF >= 0.05 & mean_VE >= 0.1)
+#unique_sigsnps_summary <- unique_sigsnps_summary %>% filter(mean_MAF >= 0.05 & mean_VE >= 0.3)
+unique_sigsnps_summary <- unique_sigsnps_summary %>% filter(SNP %in% SIG_SNP_list)
 unique_sigsnps_summary_bychr <- unique_sigsnps_summary
-unique_sigsnps_summary_bychr
+head(unique_sigsnps_summary_bychr)
 SNPs <- unique_sigsnps_summary_bychr$SNP
 SNPs
 genes <- unique_sigsnps_summary_bychr$Traits
