@@ -2119,57 +2119,6 @@ PCA_biplot_bayes
 ggsave(plot = PCA_biplot_bayes, file = paste("PCA_biplot_bayes.pdf", sep = ""), height = 8, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes") #note that ggsave will save the last plot you generated
 ggsave(plot = PCA_biplot_bayes, file = paste("PCA_biplot_bayes.png", sep = ""), height = 8, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes") #note that ggsave will save the last plot you generated
 ggsave(plot = PCA_biplot_SampleNames, file = paste("PCA_biplot_SampleNames.pdf", sep = ""), height = 16, width = 16, path = "/project/dthavar/dilthavar/acballe/PSPPC_Phenotypes") #note that ggsave will save the last plot you generated
-
-
-print("#----------------------------------------------------------------------------#")
-#perform clueterin analysis
-
-# Elbow method for WSS
-fviz_nbclust(myY_bayes, kmeans, method = "wss")
-# Silhouette method
-fviz_nbclust(myY_bayes, kmeans, method = "silhouette")
-
-set.seed(123)
-kmeans_resultados <- kmeans(myY_bayes, centers = 2)  # Replace 4 with the optimal number of clusters
-
-# Visualization of clusters
-fviz_cluster(kmeans_resultados, data = myY_bayes)
-
-myY_bayes_K1 <- kmeans(x=myY_bayes, centers=1)
-plot(myY_bayes_K1, data=myY_bayes)
-myY_bayes_K2 <- kmeans(x=myY_bayes, centers=2)
-plot(myY_bayes_K2, data=myY_bayes)
-myY_bayes_K3 <- kmeans(x=myY_bayes, centers=3)
-plot(myY_bayes_K3, data=myY_bayes)
-myY_bayes_K3 <- kmeans(x=myY_bayes, centers=4)
-plot(myY_bayes_K3, data=myY_bayes)
-
-print("#------------------------------------K-means clustering analysis----------------------------------------#")
-
-head(PSP3)
-dim(PSP3)
-PSP3_clean <- PSP3[complete.cases(PSP3),] #remove rows with NAs
-as.data.frame(PSP3_clean %>% group_by(GENO) %>% summarise(count = n()))
-length(unique(PSP3_clean$GENO)) #267
-
-PSP3_K <- PSP3_clean %>% select(c(7,9,15,16,17,19,20))
-# Data preparation: remove non-numeric columns and scale the data
-PSP3_K <- PSP3_K %>% column_to_rownames("GENO") %>% select(-1) 
-head(PSP3_K)
-summary(PSP3_K)
-any(is.na(PSP3_K)) # Are there any NAs?
-
-set.seed(278613)
-PSP3_K1 <- kmeans(x=PSP3_K, centers=1)
-plot(PSP3_K1, data=PSP3_K)
-PSP3_K2 <- kmeans(x=PSP3_K, centers=2)
-plot(PSP3_K2, data=PSP3_K)
-#plot(PSP3_K3, data=PSP3_clean, class="GENO")
-PSP3_K3 <- kmeans(x=PSP3_K, centers=3)
-library(useful)
-plot(PSP3_K3, data=PSP3_K)
-
-
        
 ```
 
