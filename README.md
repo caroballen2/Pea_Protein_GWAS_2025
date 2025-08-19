@@ -13,7 +13,7 @@ This repository contains the data files and scripts used in the study by **Ball√
 *Genotypic data in VCF format (zipped)*  
            
 **PSP3_BAYESREE.csv**  
-*Bayesuan Blups for Phenotypic traits*  
+*Bayesian Blups for Phenotypic traits*  
            
 ## Scripts  
 
